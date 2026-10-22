@@ -4,8 +4,8 @@ package com.gathin.tvhome;
  * Whether Home is in front right now, for the boot retries.
  *
  * A retry that starts Home while it is already showing would take the focus away from whatever the viewer is
- * doing (a card, a dialog, the app library), so BootStart asks here first instead of calling startActivity
- * blindly on every alarm.
+ * doing (a card, a dialog, the app library), so BootHome asks here first instead of sending
+ * GLOBAL_ACTION_HOME blindly on every retry.
  */
 final class HomeState {
 

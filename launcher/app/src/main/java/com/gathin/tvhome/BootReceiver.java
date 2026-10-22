@@ -3,23 +3,20 @@ package com.gathin.tvhome;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.os.UserManager;
 import android.util.Log;
 
 /**
- * Schedules the boot start of Home after a reboot.
+ * Records the boot broadcasts; it does not start Home.
  *
- * The handover disables the stock launcher (com.jamdeo.tv.vod), which was the only package with a boot
- * receiver on this firmware: VIDAA's boot sequence asks that package to come up, finds nothing, and the
- * TV sits on a black screen until someone presses Home. This receiver only arms a set of alarms; the
- * starting itself is left to BootStart, because a startActivity from here is unreliable:
+ * The handover disables the stock launcher, which was the only package VIDAA's boot sequence asked to come up,
+ * so the TV would sit on a black screen. Starting Home from here does not work reliably: a startActivity from a
+ * boot receiver is a background activity start (BAL), which Android 11 drops unless the app holds
+ * SYSTEM_ALERT_WINDOW, and this firmware revokes that permission on every boot. On some cold starts nothing of
+ * ours receives BOOT_COMPLETED at all.
  *
- * - LOCKED_BOOT_COMPLETED arrives before the CE storage is unlocked, and MainActivity lives in CE, so any
- *   start from that broadcast fails. The old code swallowed the exception and never tried again.
- * - BOOT_COMPLETED arrives while the vendor's boot animation still owns the screen, and Android 11+ blocks
- *   background activity starts (BAL) unless the app holds SYSTEM_ALERT_WINDOW.
- *
- * Alarms fire repeatedly instead, so a start that fails at 4 s is retried at 12 s, 25 s, 45 s and 70 s, and
- * ACTION_USER_UNLOCKED re-arms the series at the moment CE really becomes usable.
+ * HomeKeyService is bound by the system at boot regardless, so BootHome does the starting from there. This
+ * receiver stays only for the log line: it tells from a bug report whether the broadcast arrived at all.
  */
 public class BootReceiver extends BroadcastReceiver {
 
@@ -31,9 +28,7 @@ public class BootReceiver extends BroadcastReceiver {
                 && !Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
                 && !Intent.ACTION_USER_UNLOCKED.equals(action)
                 && !"android.intent.action.HISENSE_BOOT_COMPLETED".equals(action)) return;
-        Context app = context.getApplicationContext();
-        boolean unlocked = BootStart.isUnlocked(app);
+        boolean unlocked = context.getSystemService(UserManager.class).isUserUnlocked();
         Log.i("BootReceiver", "action=" + action + " unlocked=" + unlocked);
-        BootStart.schedule(app);
     }
 }

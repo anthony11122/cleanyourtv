@@ -49,6 +49,8 @@ public class HomeKeyService extends AccessibilityService {
     private BroadcastReceiver unlockReceiver;
     /** The stock launcher's HOME activities (stock_home_redirect), disabled ones included. */
     private final Set<String> stockHome = new HashSet<>();
+    /** The boot checks were already posted for this connection, so a config reload does not post them twice. */
+    private boolean bootDone;
 
     @Override
     protected void onServiceConnected() {
@@ -60,6 +62,7 @@ public class HomeKeyService extends AccessibilityService {
         UserManager users = getSystemService(UserManager.class);
         if (users.isUserUnlocked()) {
             loadConfig();
+            bootHome();
             return;
         }
         unlockReceiver = new BroadcastReceiver() {
@@ -67,6 +70,7 @@ public class HomeKeyService extends AccessibilityService {
             public void onReceive(Context context, Intent intent) {
                 stopWaitingForUnlock();
                 loadConfig();
+                bootHome();
             }
         };
         registerReceiver(unlockReceiver, new IntentFilter(Intent.ACTION_USER_UNLOCKED));
@@ -74,7 +78,18 @@ public class HomeKeyService extends AccessibilityService {
         if (users.isUserUnlocked()) {
             stopWaitingForUnlock();
             loadConfig();
+            bootHome();
         }
+    }
+
+    /**
+     * Asks BootHome to put Home in front after a reboot. Android binds this service at boot, even when the
+     * screen is still black and no boot broadcast reaches us, so this is the one reliable moment to act on.
+     */
+    private void bootHome() {
+        if (bootDone) return;
+        bootDone = true;
+        BootHome.schedule(this);
     }
 
     private void stopWaitingForUnlock() {
@@ -86,6 +101,7 @@ public class HomeKeyService extends AccessibilityService {
     @Override
     public void onDestroy() {
         stopWaitingForUnlock();
+        BootHome.cancel();
         super.onDestroy();
     }
 

@@ -23,9 +23,11 @@
          this permission (protection level normal, so it is granted at install). Ignored on other TVs. -->
     <uses-permission android:name="yandex.tv.permission.ACCESS_TV_SOURCE" />
 
-    <!-- Android 11+ blocks a background activity start (BAL) from a boot receiver, which is exactly how Home has
-         to come up on VIDDA when the stock launcher is gone. Holding this permission is the exemption; it is
-         granted over adb (appops set com.gathin.tvhome SYSTEM_ALERT_WINDOW allow), never requested on screen. -->
+    <!-- Secondary safety net only. Home is brought up by HomeKeyService with performGlobalAction(GLOBAL_ACTION_HOME),
+         which is a system action and needs no exemption, so the boot start no longer depends on this. It is kept
+         because a firmware build that stops revoking it would also lift the BAL block on other starts; this
+         firmware revokes it on every boot ("AppPermissionGroup: SYSTEM_ALERT_WINDOW revokeRuntimePermission").
+         Granted over adb (appops set com.gathin.tvhome SYSTEM_ALERT_WINDOW allow), never requested on screen. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- Android 11+ package visibility: lets the launcher list the TV apps it shows as tiles, and the
@@ -198,11 +200,11 @@
                 android:resource="@xml/input_key_service" />
         </service>
 
-        <!-- Brings Home up after a reboot. The stock launcher was disabled by the handover and had the only
-             boot receiver, so VIDAA's boot sequence found nothing to start and the screen stayed black until
-             a Home key press. This receiver does not start Home itself: it only arms BootStart's alarms, because
-             LOCKED_BOOT_COMPLETED comes before the CE storage is unlocked (MainActivity cannot start yet) and
-             BOOT_COMPLETED comes under the BAL restriction. USER_UNLOCKED re-arms the series once CE is usable. -->
+        <!-- Logs the boot broadcasts only; it does not start Home. The stock launcher was disabled by the
+             handover and had the only boot receiver, so VIDAA's boot sequence found nothing to start and the
+             screen stayed black. A start from here is a background activity start (BAL) and is dropped, and on
+             some cold starts the broadcast never arrives at all, so HomeKeyService (bound by the system at boot,
+             even with the screen black) sends GLOBAL_ACTION_HOME instead. This receiver stays for the log line. -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"
@@ -215,13 +217,5 @@
                 <action android:name="android.intent.action.USER_UNLOCKED" />
             </intent-filter>
         </receiver>
-
-        <!-- One alarm from BootStart. Not exported and no intent-filter: only our own alarms reach it, and it is
-             not directBootAware because Home itself lives in CE storage. -->
-        <receiver
-            android:name=".BootRetryReceiver"
-            android:enabled="true"
-            android:exported="false"
-            android:directBootAware="false" />
     </application>
 </manifest>

@@ -785,7 +785,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onResume() {
         super.onResume();
-        // BootStart checks this before every retry, so a late alarm does not pull Home back over another app.
+        // BootHome checks this before every retry, so a late check does not pull Home back over another app.
         HomeState.setResumed(true);
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
