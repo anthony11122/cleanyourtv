@@ -942,9 +942,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // One LEANBACK query for both the tiles and the card checks.
         final List<ResolveInfo> leanback = getPackageManager().queryIntentActivities(
                 new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER), 0);
+        // Some sets (Hisense VIDAA) publish their apps only under the plain LAUNCHER category, so their
+        // tiles were missing unless added from the app library. Leanback wins per package, LAUNCHER fills in.
+        final List<ResolveInfo> tiles = new ArrayList<>(leanback);
+        final Set<String> tilePackages = new HashSet<>();
+        for (ResolveInfo ri : leanback) if (ri.activityInfo != null) tilePackages.add(ri.activityInfo.packageName);
+        for (ResolveInfo ri : getPackageManager().queryIntentActivities(
+                new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
+            if (ri.activityInfo != null && tilePackages.add(ri.activityInfo.packageName)) tiles.add(ri);
+        }
         cards = moduleCards ? CardFeature.run(() -> Cards.discover(this, hiddenApps,
                 () -> Cards.load(Cards.storeFile(this)), leanback), none) : none;
-        adapter.reload(cards.isEmpty() ? none : CardFeature.run(() -> Cards.shown(cards), none), leanback);
+        adapter.reload(cards.isEmpty() ? none : CardFeature.run(() -> Cards.shown(cards), none), tiles, leanback);
         lastFocusedKey = returnKey;
         lastFocused = returnSlot;
         packageSequence = currentPackageSequence(packageSequence);

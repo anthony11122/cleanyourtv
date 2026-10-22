@@ -239,14 +239,17 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
      * Rebuilds the tiles. A shown module card stands in for every tile of its package (same component,
      * so focus follows it); hidden_apps wins over a card, and a card's package in dock_apps takes that slot.
      */
-    void reload(List<Cards.Card> cards, List<ResolveInfo> leanback) {
+    void reload(List<Cards.Card> cards, List<ResolveInfo> tiles, List<ResolveInfo> leanback) {
         PackageManager pm = ctx.getPackageManager();
-        // The LEANBACK query is shared with the module-card check (MainActivity); copy it before adding
-        // library apps so the caller's list stays as it was.
-        List<ResolveInfo> found = new ArrayList<>(leanback);
+        // tiles holds the LEANBACK apps plus the ones that only publish a plain LAUNCHER entry (some Hisense
+        // sets do); leanback stays the untouched LEANBACK query. Copy tiles before adding library apps so
+        // the caller's list stays as it was.
+        List<ResolveInfo> found = new ArrayList<>(tiles);
         Set<String> tvPackages = new HashSet<>();
         for (ResolveInfo ri : found) if (ri.activityInfo != null) tvPackages.add(ri.activityInfo.packageName);
-        leanbackPackages = tvPackages;
+        // Only real leanback apps may launch with that category: a phone app would not resolve the intent.
+        leanbackPackages = new HashSet<>();
+        for (ResolveInfo ri : leanback) if (ri.activityInfo != null) leanbackPackages.add(ri.activityInfo.packageName);
         Set<String> added = LibraryApps.load(ctx);
         Set<String> removed = LibraryApps.loadRemoved(ctx);
         if (!added.isEmpty()) {
