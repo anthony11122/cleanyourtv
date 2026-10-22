@@ -204,6 +204,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final Map<String, String> launchActions;
     /** Hold OK opens the activity's tile menu (config.xml, tile_menu); false opens App info, as before. */
     private final boolean tileMenu;
+    /** System apps stay off the grid unless the owner added them (hide_system_apps). */
+    private final boolean hideSystemApps;
     /** Tile names and bundled banners that replace the app's own (config.xml, app_labels and app_banners). */
     private final Map<String, String> appLabels, appBanners;
     private final List<Entry> items = new ArrayList<>();
@@ -228,6 +230,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         this.cinematic = cfg.cinematicHome;
         this.launchActions = cfg.launchActions;
         this.tileMenu = cfg.tileMenu;
+        this.hideSystemApps = cfg.hideSystemApps;
         this.appLabels = cfg.appLabels;
         this.appBanners = cfg.appBanners;
         // Tiles keep their identity across reload(), so a focused tile stays on its app instead of
@@ -252,6 +255,9 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         for (ResolveInfo ri : leanback) if (ri.activityInfo != null) leanbackPackages.add(ri.activityInfo.packageName);
         Set<String> added = LibraryApps.load(ctx);
         Set<String> removed = LibraryApps.loadRemoved(ctx);
+        // Owner-hidden apps, and the default system-app filter (which already exempts Settings and added apps).
+        Set<String> manualHidden = HiddenApps.load(ctx);
+        Set<String> autoHidden = hideSystemApps ? HiddenApps.systemHidden(ctx, true) : Collections.emptySet();
         if (!added.isEmpty()) {
             Set<String> seen = new HashSet<>(tvPackages);
             for (ResolveInfo ri : pm.queryIntentActivities(
@@ -270,7 +276,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             if (ri.activityInfo == null) continue;
             String pkg = ri.activityInfo.packageName;
             if (pkg.equals(ctx.getPackageName()) || !ri.activityInfo.exported
-                    || !LibraryApps.visible(tvPackages.contains(pkg), hidden.contains(pkg), added.contains(pkg), removed.contains(pkg))) continue;
+                    || !LibraryApps.visible(tvPackages.contains(pkg), hidden.contains(pkg), added.contains(pkg), removed.contains(pkg))
+                    || manualHidden.contains(pkg) || autoHidden.contains(pkg)) continue;
             ComponentName component = new ComponentName(pkg, ri.activityInfo.name);
             Cards.Card card = cardByPkg.get(pkg);
             if (card != null && !card.component.equals(component)) continue;   // the card stands in for this tile

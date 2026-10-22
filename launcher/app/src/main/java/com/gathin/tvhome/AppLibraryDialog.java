@@ -3,7 +3,9 @@ package com.gathin.tvhome;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -38,6 +40,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.text.Collator;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -79,6 +82,15 @@ final class AppLibraryDialog {
     private final Activity activity;
     private final Predicate<String> onHome;
     private final Runnable changed;
+    /** System apps stay off Home by default; the library still offers them behind its own switch. */
+    private final boolean hideSystemApps;
+    private final SharedPreferences prefs;
+    /** Whether the catalogue lists system apps, including the ones hidden by default (default off). */
+    private boolean showSystem;
+    /** Owner-hidden packages and the packages the system-app default hides, from the last load. */
+    private final Set<String> manualHidden = new HashSet<>();
+    private final Set<String> autoHidden = new HashSet<>();
+    private TextView systemToggle;
     private final LinearLayout panel;
     private final boolean reducedMotion;
     private final boolean animations;
@@ -142,9 +154,13 @@ final class AppLibraryDialog {
         if (popup.isShowing()) popup.update(width, height);
     }
 
-    AppLibraryDialog(Activity activity, boolean animations, boolean reducedMotion, Predicate<String> onHome, Runnable changed, Runnable dismissed) {
+    AppLibraryDialog(Activity activity, boolean animations, boolean reducedMotion, boolean hideSystemApps,
+                     Predicate<String> onHome, Runnable changed, Runnable dismissed) {
         this.activity = activity;
         this.animations = animations;
+        this.hideSystemApps = hideSystemApps;
+        prefs = activity.getSharedPreferences(Config.SETTINGS_NAME, Context.MODE_PRIVATE);
+        showSystem = prefs.getBoolean(Config.LIBRARY_SHOW_SYSTEM_KEY, false);
         this.rtl = activity.getResources().getBoolean(R.bool.rtl_app_grid);
         this.reducedMotion = reducedMotion;
         this.onHome = onHome;
@@ -217,7 +233,14 @@ final class AppLibraryDialog {
         int load = loads.start(reveal);
         PackageManager pm = activity.getPackageManager();
         String self = activity.getPackageName();
+        final boolean withSystem = showSystem;
+        final boolean hideSystem = hideSystemApps;
         LOADER.execute(() -> {
+            // Owner choices and the system-app default, read once per load. A hidden app stays listed so the
+            // owner can unhide it, even while system apps are otherwise filtered out.
+            Set<String> manual = HiddenApps.load(activity);
+            Set<String> added = LibraryApps.load(activity);
+            Set<String> auto = hideSystem ? HiddenApps.systemHidden(activity, true) : Collections.emptySet();
             Map<String, ResolveInfo> unique = new LinkedHashMap<>();
             Set<String> tv = new HashSet<>();
             // Prefer the TV entry when an app declares both categories.
@@ -225,6 +248,8 @@ final class AppLibraryDialog {
                 for (ResolveInfo info : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(category), 0)) {
                     if (info.activityInfo == null || !info.activityInfo.exported) continue;
                     String pkg = info.activityInfo.packageName;
+                    if (!withSystem && !manual.contains(pkg) && !added.contains(pkg)
+                            && HiddenApps.isSystem(info.activityInfo.applicationInfo)) continue;
                     if (Intent.CATEGORY_LEANBACK_LAUNCHER.equals(category)) tv.add(pkg);
                     if (!pkg.equals(self) && !unique.containsKey(pkg)) unique.put(pkg, info);
                 }
@@ -251,6 +276,10 @@ final class AppLibraryDialog {
             KNOWN.keySet().retainAll(unique.keySet());
             main.post(() -> {
                 if (closed || !loads.isLatest(load)) return;
+                manualHidden.clear();
+                manualHidden.addAll(manual);
+                autoHidden.clear();
+                autoHidden.addAll(auto);
                 tvPackages.clear();
                 tvPackages.addAll(tv);
                 installTimes.clear();
@@ -347,6 +376,34 @@ final class AppLibraryDialog {
                 R.plurals.library_app_count, totalApps, totalApps), 13, 0xA6FFFFFF);
         count.setSingleLine(true);
         header.addView(count, new LinearLayout.LayoutParams(-2, -2));
+        // Escape hatch: list every system app, including the ones Home hides by default.
+        systemToggle = text(activity.getString(R.string.library_show_system,
+                activity.getString(showSystem ? R.string.on : R.string.off)), 13,
+                showSystem ? 0xFF70D9A0 : 0xA6FFFFFF);
+        systemToggle.setSingleLine(true);
+        systemToggle.setFocusable(true);
+        systemToggle.setFocusableInTouchMode(true);
+        systemToggle.setPadding(dp(10), 0, dp(10), 0);
+        systemToggle.setOnClickListener(v -> {
+            showSystem = !showSystem;
+            prefs.edit().putBoolean(Config.LIBRARY_SHOW_SYSTEM_KEY, showSystem).apply();
+            selectedOffset = 0;
+            refresh();
+            panel.post(() -> {
+                if (systemToggle != null && popup.isShowing()) systemToggle.requestFocus();
+            });
+        });
+        systemToggle.setOnKeyListener((v, key, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && key == KeyEvent.KEYCODE_DPAD_DOWN && catalog != null) {
+                RecyclerView.ViewHolder first = catalog.findViewHolderForAdapterPosition(0);
+                if (first != null) {
+                    first.itemView.requestFocus();
+                    return true;
+                }
+            }
+            return false;
+        });
+        header.addView(systemToggle, new LinearLayout.LayoutParams(-2, dp(36)));
         panel.addView(header, new LinearLayout.LayoutParams(-1, dp(44)));
         instructions = text(activity.getString(R.string.library_hint_add), 13, 0xBBFFFFFF);
         instructions.setSingleLine(true);
@@ -425,6 +482,17 @@ final class AppLibraryDialog {
         });
     }
 
+    private void changeHidden(ResolveInfo app, boolean hidden) {
+        if (!HiddenApps.save(activity, app.activityInfo.packageName, hidden)) {
+            Toast.makeText(activity, R.string.library_save_failed, Toast.LENGTH_LONG).show();
+            return;
+        }
+        selectedPackage = app.activityInfo.packageName;
+        dismissActions();
+        changed.run();
+        refresh();
+    }
+
     private void changeHome(ResolveInfo app, boolean add) {
         if (!LibraryApps.save(activity, app.activityInfo.packageName, add)) {
             Toast.makeText(activity, R.string.library_save_failed, Toast.LENGTH_LONG).show();
@@ -490,6 +558,9 @@ final class AppLibraryDialog {
         boolean home = onHome.test(pkg);
         addAction(rows, home ? R.string.library_remove_shortcut : R.string.library_add_home,
                 () -> changeHome(app, !home));
+        boolean hidden = HiddenApps.contains(activity, pkg);
+        addAction(rows, hidden ? R.string.library_unhide : R.string.library_hide,
+                () -> changeHidden(app, !hidden));
         addAction(rows, R.string.library_app_info, () -> {
             close();
             try {
@@ -601,25 +672,33 @@ final class AppLibraryDialog {
             TextView status = holder.itemView.findViewById(R.id.status);
             boolean home = onHome.test(pkg);
             boolean recent = LibraryApps.recent(installTimes.getOrDefault(pkg, 0L), catalogTime);
-            status.setText(home ? R.string.library_on_home : recent ? R.string.library_recent : R.string.library_add_home);
+            boolean hiddenManual = manualHidden.contains(pkg);
+            boolean hiddenAuto = autoHidden.contains(pkg);
+            // A system app the owner also hid says so: unhiding it alone leaves the system default in force.
+            status.setText(hiddenAuto ? R.string.library_hidden_system
+                    : hiddenManual ? R.string.library_hidden
+                    : home ? R.string.library_on_home : recent ? R.string.library_recent : R.string.library_add_home);
             status.setVisibility(View.VISIBLE);
-            holder.itemView.setBackground(surface(home ? 0x1475BBA4 : 0x0CFFFFFF, 18));
+            holder.itemView.setBackground(surface(hiddenManual || hiddenAuto ? 0x14E0A15F
+                    : home ? 0x1475BBA4 : 0x0CFFFFFF, 18));
             View check = holder.itemView.findViewById(R.id.dot);
-            check.getLayoutParams().width = dp(home ? 18 : 8);
-            check.getLayoutParams().height = dp(home ? 18 : 8);
+            check.getLayoutParams().width = dp(home || hiddenManual || hiddenAuto ? 18 : 8);
+            check.getLayoutParams().height = dp(home || hiddenManual || hiddenAuto ? 18 : 8);
             if (home) check.setBackgroundResource(R.drawable.library_check);
-            else check.setBackground(surface(0xFF70D9A0, 8));
-            check.setVisibility(home || recent ? View.VISIBLE : View.GONE);
+            else check.setBackground(surface(hiddenManual || hiddenAuto ? 0xFFE0A15F : 0xFF70D9A0, 8));
+            check.setVisibility(home || recent || hiddenManual || hiddenAuto ? View.VISIBLE : View.GONE);
             holder.itemView.setOnClickListener(v -> {
-                if (onHome.test(pkg)) open(app);
+                if (hiddenManual || hiddenAuto) showActions(app, v);
+                else if (onHome.test(pkg)) open(app);
                 else changeHome(app, true);
             });
             holder.itemView.setOnLongClickListener(v -> { showActions(app, v); return true; });
             holder.itemView.setOnFocusChangeListener((v, focused) -> {
                 if (focused) {
                     selectedPackage = pkg;
-                    instructions.setText(onHome.test(pkg)
-                            ? R.string.library_hint_open : R.string.library_hint_add);
+                    instructions.setText(manualHidden.contains(pkg) || autoHidden.contains(pkg)
+                            ? R.string.library_hint_hidden
+                            : onHome.test(pkg) ? R.string.library_hint_open : R.string.library_hint_add);
                     v.post(() -> { if (v.hasFocus() && catalog != null) highlight(v, true); });
                     int index = holder.getBindingAdapterPosition();
                     if (index != RecyclerView.NO_POSITION) selectedPosition = index;
@@ -627,6 +706,11 @@ final class AppLibraryDialog {
             });
             holder.itemView.setOnKeyListener((v, key, event) -> {
                 int index = holder.getBindingAdapterPosition();
+                if (event.getAction() == KeyEvent.ACTION_DOWN && key == KeyEvent.KEYCODE_DPAD_UP
+                        && index == 0 && systemToggle != null) {
+                    systemToggle.requestFocus();
+                    return true;
+                }
                 return event.getAction() == KeyEvent.ACTION_DOWN && (key == KeyEvent.KEYCODE_DPAD_UP
                         || key == KeyEvent.KEYCODE_DPAD_DOWN
                         || (rtl ? key == KeyEvent.KEYCODE_DPAD_RIGHT : key == KeyEvent.KEYCODE_DPAD_LEFT) && index == 0

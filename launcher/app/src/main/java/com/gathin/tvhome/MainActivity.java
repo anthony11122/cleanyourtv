@@ -220,6 +220,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean bootToLiveTv;
     /** hidden_apps as the adapter sees them (config.xml or a theme's config.json): a hidden app gets no card either. */
     private Set<String> hiddenApps = Collections.emptySet();
+    /** System apps stay off Home by default (config.xml / theme hide_system_apps, toggled in launcher settings). */
+    private boolean hideSystemApps;
     private List<Cards.Card> cards = Collections.emptyList();
     /** The grid has been laid out and focused since the last resume; the card prompt waits for this. */
     private boolean tilesReady;
@@ -437,6 +439,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         vpnApp = cfg.vpnApp;
         moduleCards = cfg.moduleCards;
         hiddenApps = new HashSet<>(cfg.hiddenApps);
+        hideSystemApps = cfg.hideSystemApps;
 
         grid = findViewById(R.id.grid);
         rtlAppGrid = getResources().getBoolean(R.bool.rtl_app_grid);
@@ -951,7 +954,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
             if (ri.activityInfo != null && tilePackages.add(ri.activityInfo.packageName)) tiles.add(ri);
         }
-        cards = moduleCards ? CardFeature.run(() -> Cards.discover(this, hiddenApps,
+        // Cards must disappear with their app too: the same set the grid filters on, plus the system-app default.
+        cards = moduleCards ? CardFeature.run(() -> Cards.discover(this,
+                HiddenApps.effective(this, hiddenApps, hideSystemApps),
                 () -> Cards.load(Cards.storeFile(this)), leanback), none) : none;
         adapter.reload(cards.isEmpty() ? none : CardFeature.run(() -> Cards.shown(cards), none), tiles, leanback);
         lastFocusedKey = returnKey;
@@ -1410,7 +1415,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (openPopup != null) openPopup.dismiss();
         libraryFocusPending = false;
         libraryFromTopBar = false;
-        appLibrary = new AppLibraryDialog(this, animations, reducedMotion, adapter::containsPackage, () -> reloadApps(false), () -> {
+        appLibrary = new AppLibraryDialog(this, animations, reducedMotion, hideSystemApps, adapter::containsPackage, () -> reloadApps(false), () -> {
             appLibrary = null;
             openPopup = null;
             if (libraryFromTopBar) {
@@ -2904,6 +2909,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
         if (appLibraryEnabled) addSettingsMenuRow(rows, popup, R.string.library_remove_shortcut, () -> {
             if (LibraryApps.save(this, pkg, false)) reloadApps(false);
+            else Toast.makeText(this, R.string.library_save_failed, Toast.LENGTH_LONG).show();
+        });
+        addSettingsMenuRow(rows, popup, R.string.library_hide, () -> {
+            if (HiddenApps.save(this, pkg, true)) reloadApps(false);
             else Toast.makeText(this, R.string.library_save_failed, Toast.LENGTH_LONG).show();
         });
         addSettingsMenuRow(rows, popup, R.string.library_app_info, () -> open(new Intent(
