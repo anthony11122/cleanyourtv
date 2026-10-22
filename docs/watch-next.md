@@ -1,19 +1,10 @@
-# Reading Continue watching
+# 读取「继续观看」
 
-A launcher can show the rows other apps publish to the system's Continue watching (Watch Next)
-and preview channels. They live in the TV provider, behind `TvContract.WatchNextPrograms` and
-`TvContract.PreviewPrograms`.
+桌面可以显示别的应用发布到系统「继续观看」（Watch Next）和预览频道里的内容。这些数据在 TV provider 里，通过 `TvContract.WatchNextPrograms` 和 `TvContract.PreviewPrograms` 读取。
 
-- **Permission:** `android.permission.READ_TV_LISTINGS`, a runtime permission. Request it with
-  the normal dialog, or grant it from a shell: `pm grant <package> android.permission.READ_TV_LISTINGS`.
-- **Not needed:** `com.android.providers.tv.permission.ACCESS_ALL_EPG_DATA` is
-  `signature|privileged`, so a sideloaded app cannot hold it. With only `READ_TV_LISTINGS` a query returns
-  the caller's own rows plus every row marked `searchable`.
-- **Query without a selection:** a caller without `ACCESS_ALL_EPG_DATA` gets a `SecurityException`
-  when it passes one. Read the whole table and filter in code.
-- **Some apps publish nothing.** Rows exist only if the app writes them and marks them
-  searchable, and some apps do neither, so query on the target TV before relying on an app.
+- **权限**：`android.permission.READ_TV_LISTINGS`，运行时权限。用正常弹窗申请，或者在 shell 里直接授予：`pm grant <包名> android.permission.READ_TV_LISTINGS`。
+- **不需要的权限**：`com.android.providers.tv.permission.ACCESS_ALL_EPG_DATA` 是 `signature|privileged`，侧载应用拿不到。只有 `READ_TV_LISTINGS` 时，查询返回调用方自己的行，加上所有标了 `searchable` 的行。
+- **不要带 selection 查询**：没有 `ACCESS_ALL_EPG_DATA` 的调用方传 selection 会收到 `SecurityException`。整表读出来，在代码里过滤。
+- **有些应用什么都不发布**：只有应用自己写入并标成 searchable 才会有行，不少应用两样都不做，所以依赖某个应用之前先在目标电视上查一下。
 
-Source: `createSqlParams()` in `packages/providers/TvProvider/src/com/android/providers/tv/TvProvider.java`
-(AOSP) holds the `READ_TV_LISTINGS` and `searchable` logic; both permissions are defined in that
-module's `AndroidManifest.xml`.
+源码依据：AOSP 的 `packages/providers/TvProvider/src/com/android/providers/tv/TvProvider.java` 里的 `createSqlParams()` 实现了 `READ_TV_LISTINGS` 和 `searchable` 的逻辑，两个权限都定义在那个模块的 `AndroidManifest.xml` 里。

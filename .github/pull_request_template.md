@@ -1,20 +1,20 @@
-<!-- Thanks. One or two sentences on what this changes and the TV it was tried on is plenty. -->
+<!-- 一两句话说明改了什么、在哪台电视上验证的。 -->
 
-**Tested on:** <!-- model, Android version -->
+**验证机型：** <!-- 型号、Android 版本、固件版本 -->
 
-### If this adds or changes a TV list
-- [ ] `examples/<brand>-<model>/debloat.txt`, header with model, Android version and firmware build
-- [ ] Only packages I actually disabled and lived with; anything I had to re-enable is noted
-- [ ] A row in `examples/README.md` and one in the README's TV table
-- [ ] Nothing in the list uninstalls
+### 如果改的是机型清单
+- [ ] `examples/<品牌>-<型号>/debloat.txt`，头部写明机型、系统版本、固件 build
+- [ ] 只包含我实际禁用并正常用过的包，被我重新启用的都写明了原因
+- [ ] 在 `examples/README.md` 里加了一行
+- [ ] 清单里没有任何卸载命令
 
-### If this touches the launcher
-- [ ] Verified on a real TV, screenshot attached
-- [ ] D-pad checked from every edge (Up, Down, Left, Right)
-- [ ] No network, no background service, no new permission
-- [ ] New strings in `values/strings.xml` and the other `values-*` folders
-- [ ] Anything TV-specific is in `config.xml` or a theme, not in code
+### 如果改的是桌面
+- [ ] 真机验证过，附截图
+- [ ] 四个方向都试过（上、下、左、右）
+- [ ] 没有网络权限、没有后台服务、没有新增权限
+- [ ] 新增文案进了 `values/strings.xml` 和对应的 `values-*`
+- [ ] 跟具体机型相关的东西放在 `config.xml` 或主题里，没有写进代码
 
-### If this adds or changes a theme
-- [ ] `themes/<name>/config.json` and `themes/<name>/screenshot.jpg`: Home on a real TV with the theme, 1280×720 JPEG under 300 KB
-- [ ] A row in `themes/README.md` showing the screenshot
+### 如果改的是主题
+- [ ] `themes/<名字>/config.json` 和 `themes/<名字>/screenshot.jpg`：真机截图，1280×720 JPEG，300 KB 以内
+- [ ] 在 `themes/README.md` 的表里加了一行

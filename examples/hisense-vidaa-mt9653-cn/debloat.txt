@@ -1,0 +1,117 @@
+# 海信 VIDAA_TV（本次实测机）清理清单 —— 29 个包
+#
+# 机型：VIDAA_TV（国内 JuUI / 聚好看固件，电视设置里型号就叫这个）
+# 芯片：MT9653，板号 mt5879
+# 系统：Android 11（SDK 30）
+# 固件：RP1A.200720.011 / 02.02.70.01，安全补丁 2022-09-05
+# 内存/存储：3.8 GB RAM，41 GB 可用，UI 1080p / 320 dpi
+#
+# 用法：
+#   TV_HOST=<电视 IP> tools/disable.sh examples/hisense-vidaa-mt9653-cn/debloat.txt
+# 恢复：
+#   TV_HOST=<电视 IP> tools/restore.sh examples/hisense-vidaa-mt9653-cn/debloat.txt
+#
+# 全部是 pm disable-user，不是卸载。包还在系统里，pm enable 就能回来。
+# 用不上的行注释掉再跑，别整份照抄。
+#
+# ⚠ 三条硬性警告，先看完再动手：
+#
+# 1) com.hisense.tv.tiletransition 不能禁。
+#    名字看着像「转场动画」，实际它承载 TileAnimationService：厂商输入源面板在切换输入前必须先绑这个
+#    服务。禁掉之后面板照样能打开、照样有动画，但选 HDMI 什么都不会发生，logcat 里是
+#       Unable to start service Intent { act=com.hisense.tv.tiletransition.TileAnimationService } not found
+#    所以它不在下面这 29 个包里。
+#
+# 2) com.jamdeo.tv.vod 是原桌面，只在新桌面已经起来并设为 HOME 之后才能禁。
+#    它是这台机器上唯一带开机广播（BOOT_COMPLETED）的桌面：先禁它、再装新桌面，中间那次重启就是黑屏。
+#    正确顺序：装新桌面 → 确认 Home 已经是新桌面 → 再跑这份清单。
+#    tools/disable.sh 也会拦一道：如果清单里有 Home 的持有者、而电视上没有别的应用应答 HOME，
+#    它会跳过这一条并说明原因。别用 FORCE_HOME=1 绕过它。
+#
+# 3) 下面 29 个包同时包含 OTA 三件套：com.jamdeo.updateservice、com.hisense.usbupgrade、
+#    com.hisense.playerupdate。禁掉它们 = 永久停止固件更新，不再有安全补丁；海信只能靠官方 OTA 或
+#    售后刷机恢复，自己刷不回来。要更新就先 pm enable 这三个包，更新完再禁。
+#    不想停更就把这三行注释掉。
+#
+# 顺带说明：这份清单不会改变原桌面的样子。聚好看的运营位和 VIP 横幅是 com.jamdeo.tv.vod 自己拉的，
+# 禁旁路广告包动不了它们，只有换桌面才行。这份清单买到的是：遥测、推送、常驻轮询进程和一堆广告进程。
+
+# AOSP 遗留组件，电视上用不到
+com.android.printspooler
+
+# 海信广告与运营位
+com.hisense.business.ad
+com.hisense.service.ad
+com.hisense.widget.pro
+
+# 海信遥测、日志上报、推送通道
+com.hisense.hitv.das
+com.hisense.platformreport
+com.hisense.logupload
+com.hisense.service.hproxy
+com.hisense.service.message
+
+# 零售演示、酒店模式、工厂自检、电子说明书、AR 百科
+com.hisense.demonstrate
+com.hisense.hotelmenu
+com.hisense.autotest
+com.hisense.electronictutorial
+com.hisense.ar.baike
+com.meetingroom
+
+# 预装内容应用：健身镜、菜谱、视频通话、视频会议、天气、AI 绘本、日历
+com.hisense.tv.fitmirror
+com.hisense.tv.foodmanage
+com.hisense.tv.videochat.social
+com.hisense.tv.videoconference
+com.hisense.tv.weather
+com.vision.aibook
+com.jamdeo.calendar
+
+# 开机向导（已完成）和屏保
+# 屏保在这版固件上是广告位：拍信创意的图库 + 文案 + 点赞按钮。
+# 建议同时执行：settings put secure screensaver_enabled 0
+com.jamdeo.tv.fte
+com.jamdeo.screensaver
+
+# 第二个「桌面」：com.keylab.speech.view.vidaa 里有 com.ju.secondscreen.HomeActivity，
+# 开机时按组件名被拉起，会盖在新桌面前面，还带「内存提速 39%」的弹窗。组件级禁用会被拒绝
+# （setEnabledSetting 抛 SecurityException），只能整包禁；副作用是语音助手 UI 和遥控器麦克风键一起没了。
+com.keylab.speech.view.vidaa
+
+# 原桌面（聚好看）。先装新桌面并设成 HOME，再取消下面这行的注释，或者等清单跑完后单独禁。
+# com.jamdeo.tv.vod
+com.jamdeo.tv.vod
+
+# OTA 三件套：禁了就不再更新，恢复要刷机
+com.hisense.playerupdate
+com.hisense.usbupgrade
+com.jamdeo.updateservice
+
+# ---------------------------------------------------------------------------------------------
+# 这些包实测不能禁：
+#   com.jamdeo.tv.livetv          有线电视和 HDMI/AV 播放
+#   com.jamdeo.tv.service         TVServices，输入切换的 TIL/JNI 那一半
+#   com.hisense.tv.inputs         SysUIMerge，输入源面板和任务中心
+#   com.hisense.tv.baseservice    电视基础服务
+#   com.hisense.tv.tiletransition TileAnimationService，输入源面板依赖（见警告 1）
+#   com.hisense.bluetoothpair     遥控器配对，禁了可能没有遥控器可用
+#   com.sohu.inputmethod.sogou.tv 机器上唯一的输入法
+#   com.hisense.padinputmethod    备用输入法
+#   com.hisense.raycodereceiver   疑似遥控器通道，进程里一直在跑
+#   com.hisense.uifac             工厂 UI 组件
+#   com.hisense.systeminfo        系统信息 provider
+#   com.hisense.hiservice          MQTT 基础服务
+#   com.hisense.aiod / .aiservice AI 画质（AIPQ）和手势
+#   com.keylab.speech.core.vidaa  语音核心（语音 UI 禁了也留着）
+#   com.vt.mic.service / .point.remoteservice 麦克风和空鼠
+#   com.dolby.android.audio.service / .audio.calibration
+#
+# 按需保留（本清单没动）：com.ms.weshare、com.ms.ucast.ucastapp、
+#   com.hisense.multiscreen.screenhelper、com.hisense.pcm.share、com.kookong.tvplus（五套投屏并存）、
+#   com.hisense.tv.familycloud、com.hisense.nasservice、com.hisense.nas.pt（NAS）、
+#   com.hisense.tv.aivirtualassistant 及语音助手其余部分、com.hisense.childlock、
+#   com.hisense.multiwindow。
+#
+# 出厂就已禁用：com.android.contacts、camera2、calendar、settings、music、
+#   providers.userdictionary、deskclock、providers.contacts。

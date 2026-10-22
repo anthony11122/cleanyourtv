@@ -2,6 +2,10 @@ MIT License
 
 Copyright (c) 2026 Gathin
 
+This is a modified version of CleanYourTV (https://github.com/Gathin23/cleanyourtv),
+trimmed and documented for Hisense / VIDAA TVs. Original work copyright (c) 2026 Gathin,
+released under the MIT License below.
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights

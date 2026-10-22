@@ -1,17 +1,12 @@
-# Module card, spec 1
+# 模块卡片，spec 1
 
-An installed Android TV app can declare a card for the launcher. A card is the app's tile with a
-label of its choice, an optional caption and an optional glow colour, placed ahead of the
-alphabetical grid. The launcher shows a card only after the TV owner has answered Show on a prompt, and it
-remembers that answer for the app's signing key.
+已安装的 Android TV 应用可以向桌面声明一张卡片。卡片就是这个应用的图标，但名字由它自己定，可以带副标题和光晕颜色，排在字母网格之前。桌面只在电视主人回答「显示」之后才展示卡片，并且把这个回答钉在应用的签名密钥上。
 
-This document is the contract between a module (the app) and the launcher. The how-to for module
-authors is [`docs/modules.md`](../modules.md).
+这份文档是模块（应用）和桌面之间的契约。写给模块作者的教程在 [`docs/modules.md`](../modules.md)。
 
-## Declaration
+## 声明
 
-In the module's `AndroidManifest.xml`, on the activity that already has the `LEANBACK_LAUNCHER`
-filter (the one the launcher shows as a tile):
+模块的 `AndroidManifest.xml` 里，在已经有 `LEANBACK_LAUNCHER` 过滤器的那个 Activity 上（也就是桌面显示成图标的那个）：
 
 ```xml
 <activity android:name=".LibraryActivity" android:exported="true">
@@ -27,153 +22,85 @@ filter (the one the launcher shows as a tile):
 </activity>
 ```
 
-`res/xml/module_card.xml`:
+`res/xml/module_card.xml`：
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <card spec="1" label="Retro" caption="NES games" accent="#E8A33D" />
 ```
 
-Rules for the declaration:
+声明规则：
 
-- The card filter and the `meta-data` sit on an activity that also has `MAIN` +
-  `LEANBACK_LAUNCHER`, is `exported` and is enabled. A card on any other activity is dropped.
-- The `meta-data` must use `android:resource` pointing at an XML resource. `android:value` is not
-  read.
-- One card per package. If a package declares more than one, only the first the system lists is
-  read.
-- The root element is `<card>` with attributes only, no XML namespace. Child elements are ignored.
-  Unknown attributes are ignored, up to 16 attributes in total.
+- 卡片过滤器和 `meta-data` 必须挂在同时带 `MAIN` + `LEANBACK_LAUNCHER`、`exported` 且 enabled 的 Activity 上。挂在别处一律丢弃。
+- `meta-data` 必须用 `android:resource` 指向 XML 资源。`android:value` 不读。
+- 一个包只认一张卡片。声明多张时只读系统列出的第一张。
+- 根元素是 `<card>`，只有属性，没有 XML 命名空间。子元素忽略，未知属性忽略，属性总数上限 16。
 
-## Fields
+## 字段
 
-Values are literal text written in the XML file. References (`@string/name`, `?attr/name`) are
-not resolved in spec 1 and make the card invalid, so a card is not localisable in spec 1.
+值是写在 XML 里的字面文本。spec 1 不解析引用（`@string/name`、`?attr/name`），写了卡片就无效，所以 spec 1 的卡片不能做多语言。
 
-| Attribute | Required | Rule |
+| 属性 | 必填 | 规则 |
 | :- | :- | :- |
-| `spec` | yes | Decimal integer. This launcher reads spec `1`. Any other value: the card is ignored, with one log line. |
-| `label` | yes | 1 to 24 characters from `A-Z a-z 0-9` space `. & + ' -`, no leading or trailing space, at least one letter or digit. See the reserved names below. |
-| `caption` | no | Up to 32 characters from the same set. Shown after the label while the card is focused in the grid. The name line under the tile is one line; label and caption together show about 26 characters on a 4 column grid, so keep the caption to a few words. |
-| `accent` | no | `#RRGGBB`. The ambient glow colour while the card is focused in the dock. |
+| `spec` | 是 | 十进制整数。本桌面读 `1`。其他值：忽略这张卡片，打一行日志。 |
+| `label` | 是 | 1 到 24 个字符，取自 `A-Z a-z 0-9`、空格、`. & + ' -`，首尾不能有空格，至少含一个字母或数字。见下面的保留名。 |
+| `caption` | 否 | 最多 32 个字符，字符集同上。卡片在网格里聚焦时显示在 label 后面。图标下面只有一行，4 列布局时 label + caption 大约只能显示 26 个字符，所以副标题写几个词就好。 |
+| `accent` | 否 | `#RRGGBB`。卡片在停靠栏聚焦时背后的环境光晕颜色。 |
 
-The resource compiler stores some attribute values in a typed form; the launcher accepts the forms
-it hands back for the values above (`spec="1"` as an integer, `accent="#E8A33D"` as a colour,
-which comes back as `#ffe8a33d`). Keep labels and captions as words: a value that reads as a
-number with a unit or as a colour is stored in that typed form and will not match what you wrote.
+资源编译器会把某些属性值存成带类型的格式；桌面对上面这几个值接受它拿回来的形式（`spec="1"` 是整数，`accent="#E8A33D"` 是颜色，读回来是 `#ffe8a33d`）。label 和 caption 请写纯单词：读起来像带单位的数字或者像颜色的值会被存成对应类型，跟你写的对不上。
 
-### Reserved names
+### 保留名
 
-Comparisons use the folded form of the label: lower case, with everything except ASCII letters
-and digits removed. "Live TV", "live-tv" and "LIVETV" are the same name.
+比较用的是 label 的折叠形式：转小写，去掉除 ASCII 字母和数字之外的所有字符。「Live TV」「live-tv」「LIVETV」是同一个名字。
 
-A label is rejected when:
+以下 label 会被拒：
 
-- it contains `verified` or `official` anywhere: words that imply endorsement are reserved, and
-  nothing a module declares is ever presented as endorsed (the same two words are refused in the
-  caption);
-- it is one of the names the launcher's own UI uses, in English or in the TV's language:
-  `Home`, `Settings`, `Inputs`, `Wi-Fi`, `Live TV`, `Default home`, `Clock`, `cleanyourtv`, `tv-vibehack`;
-- it names an input the Inputs menu shows: `HDMI` and anything starting with it, `AV`;
-- while the prompt is due (a new card, or one whose signing key or label changed): it equals the label of
-  another app installed on this TV (the names on the home screen), or the app's own label equals
-  another installed app's label. The module's own app label is fine: a card named "Retro" from an
-  app named "Retro" is the normal case. Once the owner has answered, the name stays with that card:
-  an app installed afterwards with the same label does not displace it. The answer is for that name:
-  a card that changes its label on an update is pending again and goes through these checks anew;
-- two cards share a label: the one the owner already decided on keeps the name (the oldest
-  decision wins), the other is dropped; when neither has a decision, both are dropped and nobody is
-  asked about a contested name.
+- 任何位置包含 `verified` 或 `official`：暗示官方背书的词保留，模块声明的东西永远不会被呈现成「官方」（caption 里同样拒这两个词）；
+- 是桌面自己 UI 用到的名字，英文或电视当前语言：`Home`、`Settings`、`Inputs`、`Wi-Fi`、`Live TV`、`Default home`、`Clock`、`cleanyourtv`、`tv-vibehack`；
+- 是输入源菜单里显示的输入源名：`HDMI` 以及以它开头的任何写法、`AV`；
+- 在等待回答期间（新卡片，或者签名密钥、label 变了的卡片）：等于这台电视上另一个已装应用的 label（主屏上显示的名字），或者应用自己的名字等于另一个已装应用的名字。模块自己的应用名没问题：应用叫 Retro、卡片也叫 Retro 是正常情况。主人回答过之后名字就归这张卡片了：之后装的同名应用顶不掉它。回答是针对这个名字的，卡片在更新里改 label 会重新进入待定状态，再走一遍这些检查；
+- 两张卡片 label 相同：主人已经决定过的那张保留名字（最早的决定的优先），另一张丢弃；两张都没被决定过就都丢弃，也不去问主人一个有争议的名字。
 
-## Limits
+## 限制
 
-The launcher never trusts a module's input to be small or well formed. Everything is bounded and
-any violation drops that one card, with a log line and no other effect.
+桌面从不相信模块的输入是小的、合法的。所有东西都有上限，越界只丢那一张卡片，打一行日志，其他没有影响。
 
-| What | Limit |
+| 项 | 上限 |
 | :- | :- |
-| Cards read per package list refresh | 32, the rest are ignored |
-| Cards shown as tiles | 8, by label; the rest are listed as over the limit in the Module cards list and keep their ordinary tile |
-| Decisions remembered in `cards.json` | 128, the oldest are dropped beyond that |
-| XML events walked per card | 64 |
-| XML nesting depth | 2 (`<card>` and its direct children) |
-| Attributes on `<card>` | 16 |
-| Label and caption length | 24 and 32 characters, checked before anything else looks at the value |
-| Signers | exactly one signing certificate; a package with several is rejected |
+| 每次刷新包列表读取的卡片数 | 32，多出的忽略 |
+| 显示成图标的卡片数 | 8，按 label 排序；其余在模块卡片列表里标记为超限，保留普通图标 |
+| `cards.json` 里记录的决定数 | 128，超出丢最旧的 |
+| 每张卡片遍历的 XML 事件数 | 64 |
+| XML 嵌套深度 | 2（`<card>` 和它的直接子元素） |
+| `<card>` 上的属性数 | 16 |
+| label / caption 长度 | 24 / 32 个字符，在做其他检查之前先卡 |
+| 签名者 | 只能有一个签名证书，多个的直接拒绝 |
 
-## Launcher behaviour
+## 桌面行为
 
-1. Discovery. Every time the home screen comes to the front, the launcher asks the package manager
-   for activities with `MAIN` + `com.gathin.tvhome.category.DOCK_CARD` (a package manager query,
-   no polling, no services, no network). For each one it checks the activity, reads the XML through the package
-   manager, applies the rules above and computes the signer digest. Every card is read inside its
-   own error boundary.
-2. Signer digest. SHA-256 of the DER encoded signing certificate of the package's single signer,
-   as `apksigner verify` with the `print-certs` option prints it ("Signer #1 certificate SHA-256
-   digest"). On Android 9 and newer the launcher reads the current signer; on Android 8 it reads
-   the package's signature. A package signed with more than one certificate is rejected.
-3. Decision record. The owner's decision is stored per package in the launcher's private storage
-   (`files/cards.json`, format version 2): package, signer digest, the card's folded label, decision
-   (`show` or `hide`), first seen, decided at. The file is written atomically and validated strictly when read; a file that does not
-   validate is moved to `cards.json.bad` and the launcher continues as if no decision had been made.
-   The record never leaves the TV (backups are off for the launcher).
-4. Prompt. A card with no record, or whose signer digest or folded label differs from its record, is
-   not shown. Once
-   the grid is laid out and the home screen has focus, with no menu open, the launcher shows one
-   prompt. It names the app by its own label (control and formatting characters removed, at most 40
-   characters) and package and the key by the first twelve hex characters of the digest; when the
-   card label differs from the app label it says both names.
-   The buttons are "Keep hidden" (focused first) and "Show card"; Back means Keep hidden. The prompt
-   also says how to change the answer afterwards. Left and Right move between the buttons; Up and Down
-   do nothing. After an answer, the next card with a pending prompt follows at once.
-5. Signer change. A package whose signer digest differs from its record is treated as new: the card
-   is not shown, and the prompt says the app was updated with a different signing key. The record is
-   replaced only by the owner's answer, never by the detection alone.
-   Label change. A card whose folded label differs from its record is treated the same way: not
-   shown, and the prompt says the card changed its name. A decision is for one name under one key.
-6. Placement. A shown card stands in for every tile of its package: the ordinary tile is not shown
-   next to it. A package in `hidden_apps` (`config.xml`) shows neither a tile nor a card. A package in
-   `dock_apps` gets its card in that dock slot. Other cards sort right after the configured dock apps
-   and before the alphabetical grid, by label. On the default configuration, four dock apps and four
-   columns, that is the first grid tile. With fewer `dock_apps` than columns, the free dock slots take
-   the first grid apps (`fill_dock`, on by default), so a shown card fills the free dock slot, since
-   the dock is then simply the first row; with `fill_dock` false the free slots stay empty and a
-   shown card is the first grid tile. In the dock, the top shelf shows the label and the glow uses
-   the accent; in the grid, the name line under the focused tile shows the label and the caption,
-   as far as they fit on one line. A card uses the app's own banner (or icon) for its artwork.
-7. Hide. A hidden card leaves the app's ordinary tile exactly as before: hiding a card never
-   removes an app, and showing one never installs anything. A card is hidden or shown again from
-   the Module cards list: hold OK on the Settings pill. The list shows every discovered card with
-   its app label, package, full signer digest and state; OK toggles Shown and Hidden.
-8. Uninstall. Removing the module removes the card. Its record stays, so a reinstall with the same
-   signing key needs no new prompt.
-9. Launch. A card launches the declaring activity by explicit component with no extras and no data,
-   the same way every tile is launched. No field of a card can name an intent, a URI, a class or a
-   package. Holding OK on a card opens the app's App info page, like any tile.
-10. Off switch. `module_cards` in `config.xml` or the `config.json` theme overlay (default `true`). When `false` the launcher never looks
-    for cards, never asks, and the Module cards list only says that none are installed.
+1. **发现**。每次回到主屏，桌面向包管理器查询带 `MAIN` + `com.gathin.tvhome.category.DOCK_CARD` 的 Activity（一次包查询，不轮询、不起服务、不联网）。逐个检查 Activity、通过包管理器读 XML、套用上面的规则、算签名摘要。每张卡片在自己的错误边界里读取。
+2. **签名摘要**。包唯一签名者的 DER 证书的 SHA-256，和 `apksigner verify --print-certs` 打印的「Signer #1 certificate SHA-256 digest」是同一个值。Android 9 以上读当前签名者，Android 8 读包的签名。多证书签名的包直接拒。
+3. **决定记录**。主人的决定按包存在桌面私有存储里（`files/cards.json`，格式版本 2）：包名、签名摘要、卡片折叠后的 label、决定（`show` / `hide`）、首次看到时间、决定时间。文件原子写入，读取时严格校验；校验不过就改名成 `cards.json.bad`，桌面当没有决定继续跑。记录永远不离开电视（桌面的备份是关的）。
+4. **询问**。没有记录的卡片，或者签名摘要、折叠 label 跟记录不一致的卡片不显示。等网格布局完成、主屏拿到焦点、没有菜单打开时，桌面弹一次询问。它用应用自己的名字（去掉控制字符和格式字符，最多 40 个字符）和包名、密钥摘要前 12 个十六进制字符来标识；卡片 label 和应用名不同时两个名字都写。按钮是「保持隐藏」（默认焦点）和「显示卡片」；返回键等于「保持隐藏」。询问里也写明之后怎么改。左右在按钮间移动，上下不做事。回答完立刻轮到下一张待定的卡片。
+5. **换签名**。签名摘要跟记录不一致的包当作新包：卡片不显示，询问里写明「应用用了不同的签名密钥更新」。记录只由主人的回答替换，检测本身不会改记录。**改 label** 同理：折叠 label 跟记录不一致的卡片不显示，询问里写明卡片改了名字。一个决定只对一个密钥下的一个名字有效。
+6. **位置**。已显示的卡片顶替它所在包的所有图标：普通图标不再显示在旁边。`hidden_apps`（`config.xml`）里的包既不显示图标也不显示卡片。`dock_apps` 里的包，卡片就放在那个停靠栏槽位。其他卡片按 label 排在配置的停靠栏应用之后、字母网格之前。默认配置（4 个停靠栏应用、4 列）下，那就是网格的第一个位置。`dock_apps` 少于列数时，空槽位用网格前几个应用补上（`fill_dock`，默认开），已显示的卡片会占住空槽位，因为这时停靠栏就是第一行；`fill_dock` 为 false 时空槽位留空，已显示的卡片是网格第一个。在停靠栏里，展台显示 label，光晕用 accent；在网格里，聚焦图标下面的名字行显示 label 和 caption，能显示多少显示多少。卡片的图用应用自己的 banner（或者图标）。
+7. **隐藏**。隐藏的卡片让应用的普通图标保持原样：隐藏卡片从不移除应用，显示卡片也从不安装任何东西。要改就在模块卡片列表里改：长按设置按钮。列表里列出每张发现的卡片，带应用名、包名、完整签名摘要和状态；按 OK 在「显示」和「隐藏」之间切换。
+8. **卸载**。卸载模块，卡片就没了。记录留着，用同一把密钥重装不需要重新询问。
+9. **启动**。卡片按显式组件启动声明它的那个 Activity，不带 extras、不带 data，跟所有图标一样。卡片的任何字段都不能指定 intent、URI、类名或包名。长按 OK 打开应用信息页，跟普通图标一样。
+10. **开关**。`config.xml` 或主题 `config.json` 里的 `module_cards`（默认 `true`）。为 false 时桌面完全不找卡片、不询问，模块卡片列表只说没装。
 
-## Security
+## 安全
 
-- The launcher never installs, downloads, enables or disables anything, binds no service, loads no
-  code, views or resources from a module beyond the one XML file and the label and artwork every
-  tile already uses, and has no network permission.
-- Nothing is shown until the owner says so, and the answer is pinned to the signing key. The owner
-  judges a package name and an app label; the launcher judges the digest.
-- A card can only make its own activity look different; it cannot start anything else. Launching it
-  is the same as launching the app's ordinary tile.
-- Label rules are ASCII only so that look-alike letters cannot imitate another name, and labels
-  that match another installed app or the launcher's own UI are refused.
-- The card code can never take the home screen down: if any part of it fails on a TV, cards switch
-  off for that session with one log line and Home behaves as with `module_cards` false.
-- Residual risk: an app that holds the "draw over other apps" permission could draw over the prompt
-  text. It cannot press the prompt's buttons from a remote. The prompt is only shown while the home
-  screen has window focus and is dismissed when the home screen leaves the front.
+- 桌面从不安装、下载、启用、禁用任何东西，不绑服务、不加载代码，除了那张 XML 和每个图标本来就会用的名字、图片之外，不读模块的任何视图和资源，也没有网络权限。
+- 主人不说显示就不显示，回答钉在签名密钥上。主人判断包名和应用名，桌面判断摘要。
+- 卡片只能让自己那个 Activity 长得不一样，启动不了别的。启动它就等于启动应用的普通图标。
+- label 规则只允许 ASCII，避免形近字母冒充别的名字；跟电视上其他应用或桌面自己 UI 同名的 label 一律拒。
+- 卡片代码永远拖不垮主屏：任何一部分在这台电视上出错，本次会话就关掉卡片，打一行日志，桌面表现得跟 `module_cards` 为 false 一样。
+- 残余风险：持有「在其他应用上层绘制」权限的应用可以在询问文字上作画。它没法用遥控器按到询问的按钮。询问只在主屏拥有窗口焦点时显示，主屏离开前台就关掉。
 
-## Rejections
+## 拒绝
 
-Every rejected card produces one line in logcat under the tag `TvHomeCards`, with the package and
-the reason, for example:
+每张被拒的卡片在 logcat 的 `TvHomeCards` 标签下打一行，带包名和原因，例如：
 
 ```
 W TvHomeCards: io.example.spoof: label 'Retro' is the name of another installed app
@@ -181,5 +108,4 @@ W TvHomeCards: io.example.deep: XML nested deeper than 2
 W TvHomeCards: io.example.big: label is longer than 24 characters
 ```
 
-Read them with `adb logcat -s TvHomeCards` (or `tools/tv.py 'logcat -d -s TvHomeCards'`). A rejected
-card has no other effect: the app keeps its ordinary tile.
+用 `adb logcat -s TvHomeCards` 或 `tools/tv.py 'logcat -d -s TvHomeCards'` 看。被拒的卡片没有其他影响：应用保留普通图标。

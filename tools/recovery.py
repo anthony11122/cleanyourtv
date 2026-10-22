@@ -36,7 +36,7 @@ VERSION = 1
 # (#884: an original Mi TV Stick that lost its permission controller, package installer, ext services,
 # module metadata and mainline overlays never came back). The content providers in CORE_OK are the
 # exception, since tested lists turn them off and no TV feature uses them. disable.sh and disable.ps1
-# carry the same two patterns (tests/test_core_packages.py keeps the three in step).
+# carry the same two patterns (keep the three in step).
 CORE_RE = re.compile(r"^(android|com\.android\.systemui|com\.android\.shell|com\.android\.phone|com\.android\.settings|com\.android\.tv\.settings|com\.(google\.)?android\.(permissioncontroller|packageinstaller|ext\.services|ext\.shared|modulemetadata)|com\.google\.android\.overlay\.modules.*|com\.android\.providers\..*)$")
 CORE_OK = re.compile(r"^com\.android\.providers\.(calendar|contacts|userdictionary|blockednumber)$")
 

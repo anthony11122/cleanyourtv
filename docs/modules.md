@@ -1,18 +1,12 @@
-# Making a module
+# 写一个模块
 
-A module is a normal Android TV app that declares a card for this launcher. Your repo, your
-licence, your signing key, released as an APK wherever you like, for example on your GitHub
-Releases page with its SHA-256. The TV owner sideloads it like any other app. The launcher finds the
-card and asks the owner once; if they answer Show, your app appears as a card from then on: your
-label, an optional caption, and your colour in the ambient glow, placed ahead of the alphabetical
-grid.
+模块就是一个普通 Android TV 应用，向桌面声明一张卡片。仓库、协议、签名密钥都是你自己的，APK 发在哪都行（比如 GitHub Releases，旁边附 SHA-256）。电视主人像装普通应用一样侧载，桌面发现卡片后会问一次；回答「显示」之后，你的应用就作为一张卡片出现：你的名字、可选的副标题、你的主题色光晕，排在字母网格之前。
 
-The contract is [`docs/specs/card.md`](specs/card.md). This page is the short version.
+契约在 [`docs/specs/card.md`](specs/card.md)，这篇是简版。
 
-## 1. Declare the card
+## 1. 声明卡片
 
-On the activity that already has the `LEANBACK_LAUNCHER` filter, add a second filter and a
-`meta-data` entry:
+在已经有 `LEANBACK_LAUNCHER` 过滤器的 Activity 上，再加一个过滤器和一条 `meta-data`：
 
 ```xml
 <activity android:name=".LibraryActivity" android:exported="true">
@@ -28,86 +22,69 @@ On the activity that already has the `LEANBACK_LAUNCHER` filter, add a second fi
 </activity>
 ```
 
-Then create `res/xml/module_card.xml`:
+再建 `res/xml/module_card.xml`：
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <card spec="1" label="Retro" caption="NES games" accent="#E8A33D" />
 ```
 
-- `label`: 1 to 24 characters, letters, digits, space and `. & + ' -`. Keep it short; it is the
-  name on the tile and in the top shelf. Words like "verified" or "official", the launcher's own UI
-  names and input names such as HDMI are refused, and so is a new card whose label (or whose app
-  label) is the name of another app installed on the TV (the full list is in the spec). Changing
-  the label in an update makes the owner decide again, so pick it once.
-- `caption`: optional, up to 32 characters, shown after the label while the card is focused. The
-  endorsement words refused in labels are refused here too. The
-  name line under the tile is one line; label and caption together show about 26 characters on a
-  4 column grid, so keep the caption to a few words.
-- `accent`: optional `#RRGGBB`, the glow colour behind the card while it is focused in the dock.
-- Write the values as literal text. `@string` references are not resolved in spec 1.
+- `label`：1 到 24 个字符，只允许字母、数字、空格和 `. & + ' -`。写短点，它是图标上和展台上的名字。「verified」「official」这类词、桌面自己的 UI 名字、HDMI 这类输入源名字都会被拒；新卡片的 label（或者应用自己的名字）跟电视上另一个已装应用同名也会被拒。更新时改 label 会让主人重新确认一次，所以一次定好。
+- `caption`：可选，最多 32 个字符，卡片聚焦时显示在 label 后面。图标下面只有一行，4 列布局时 label + caption 大约只能显示 26 个字符，所以副标题写几个词就好。
+- `accent`：可选 `#RRGGBB`，卡片在停靠栏聚焦时背后的光晕颜色。
+- 值写纯文本，spec 1 不解析 `@string` 引用。
 
-The card must sit on the same activity as your `LEANBACK_LAUNCHER` filter, and that activity must
-be exported and enabled. Otherwise the card is dropped.
+卡片必须挂在带 `LEANBACK_LAUNCHER` 的那个 Activity 上，而且这个 Activity 要 exported 且 enabled，否则卡片会被丢掉。
 
-## 2. Keep it light
+## 2. 保持轻量
 
-The launcher targets TVs with 1 GB of RAM, and the owners trust what they put on their home screen.
+桌面面向 1 GB 内存的电视，而主人是要把它放在主屏幕上的。
 
-- No background services unless the feature needs one, and say so in your README.
-- No telemetry without an opt-in. No ads.
-- Do not bundle content you have no right to redistribute.
-- Use your own art. Do not use other companies' logos as your banner or icon.
-- Describe every permission you request in your README.
+- 不需要后台服务就别开，开了要在 README 里写明。
+- 没有用户同意就不要遥测。不要放广告。
+- 不要打包你没有分发权的内容。
+- 用自己的图。别拿别家公司的 logo 当 banner 或图标。
+- 每个申请的权限都要在 README 里解释。
 
-## 3. Test on a TV
+## 3. 在电视上测
 
-Install over ADB, press Home, and the prompt appears:
+ADB 装上去，按 Home，弹窗就会出来：
 
 ```bash
 adb install -r app/build/outputs/apk/release/app-release.apk
 adb shell input keyevent KEYCODE_HOME
 ```
 
-(This repo's `tools/tv.py` works where the `adb` binary is blocked; see the README.)
+（`adb` 二进制被拦的环境用本仓库的 `tools/tv.py`。）
 
-Useful checks:
+几个有用的检查：
 
 ```bash
-# Did the card filter and the meta-data land on the right activity?
+# 卡片过滤器和 meta-data 是不是落在对的 Activity 上
 adb shell pm dump io.github.udhaykumarbala.retro | grep -B2 -A6 DOCK_CARD
 
-# Why was a card rejected? One line per reason.
+# 卡片为什么被拒？一行一个原因
 adb logcat -s TvHomeCards
 ```
 
-Then: answer Keep hidden and check the app keeps its ordinary tile; hold OK on Settings, open the
-Module cards list, set it to Shown, and check the card takes the tile's place; press OK on the card
-and check your app opens; uninstall and check the card is gone. Take a screenshot of the card
-focused in the grid for your README.
+然后依次试：回答「保持隐藏」，确认应用还是普通图标；长按设置 → 模块卡片列表 → 改成「显示」，确认卡片顶替了图标；点卡片确认能打开你的应用；卸载后确认卡片消失。给 README 截一张卡片在网格里聚焦的图。
 
-## 4. Release and keep your key
+## 4. 发布并守住密钥
 
-The owner's answer is pinned to your signing certificate. Publish the certificate digest with every
-release so people can check what they install:
+主人的回答是钉在你的签名证书上的。每次发布都把证书摘要放出来，别人才能核对装的是什么：
 
 ```bash
 apksigner verify -print-certs app-release.apk | grep 'SHA-256'
 ```
 
-(`apksigner` accepts its options with one dash as well as two.)
+（`apksigner` 的参数写一个横线两个横线都行。）
 
-The line "Signer #1 certificate SHA-256 digest" is what the launcher computes on the TV. Sign every
-update with the same key: a different key makes every TV ask again, and the card stays hidden
-until the owner answers. Sign with one certificate; the launcher rejects APKs with several signers.
-Keep the keystore out of your repo.
+「Signer #1 certificate SHA-256 digest」那一行就是桌面在电视上算的东西。每次更新都用同一把密钥签：换了密钥，每台电视都会重新问一次，在主人回答之前卡片一直是隐藏的。只用一个证书签名，多签名的 APK 会被拒。keystore 不要进仓库。
 
-Publish the APK's own SHA-256 next to it as well.
+APK 自己的 SHA-256 也一起发出来。
 
-## Reference module
+## 参考模块
 
-Retro, an NES library for the TV, declares a card exactly as above:
-<https://github.com/udhaykumarbala/tv-vibehack-retro>.
+Retro（一个电视上的 NES 游戏库）就是按上面的方式声明卡片的：<https://github.com/udhaykumarbala/tv-vibehack-retro>。
 
-A launcher that wants other apps' Continue watching rows can read them, see
-[`docs/watch-next.md`](watch-next.md).
+想读别的应用的「继续观看」行的桌面，见 [`docs/watch-next.md`](watch-next.md)。

@@ -30,7 +30,7 @@ fi
 # Stick never came back after a list took the permission controller, package installer, ext services,
 # module metadata and the mainline overlays (#884). No switch overrides this. The content providers
 # below CORE_OK are the exception: tested lists turn them off and no TV feature uses them.
-# Keep CORE_RE and CORE_OK the same in disable.ps1 and recovery.py (tests/test_core_packages.py).
+# Keep CORE_RE and CORE_OK the same in disable.ps1 and recovery.py (keep the three in step).
 CORE_RE='^(android|com\.android\.systemui|com\.android\.shell|com\.android\.phone|com\.android\.settings|com\.android\.tv\.settings|com\.(google\.)?android\.(permissioncontroller|packageinstaller|ext\.services|ext\.shared|modulemetadata)|com\.google\.android\.overlay\.modules.*|com\.android\.providers\..*)$'
 CORE_OK='^com\.android\.providers\.(calendar|contacts|userdictionary|blockednumber)$'
 CORE=$(printf '%s\n' "$PKGS" | grep -E "$CORE_RE" | grep -vE "$CORE_OK" || true)
@@ -69,7 +69,7 @@ ADB_SECURE="$("$PY" -I tools/tv.py "getprop ro.adb.secure" 2>/dev/null | tr -d '
 
 # Home guard (#239): a list that disables the app owning Home leaves the TV with nothing to start the
 # next time Home is pressed, and on Google TV the setup wizard can take the category instead and
-# crash-loop system_server (docs/TROUBLESHOOTING.md). Skip the owner while nothing else on the TV can
+# crash-loop system_server (docs/hisense/故障排查.md). Skip the owner while nothing else on the TV can
 # answer HOME; FORCE_HOME=1 disables it anyway, for a TV reachable another way.
 # The extra query is worth it only when the list holds Home's own package, which is how a list that
 # leaves the TV without a launcher looks before anything is disabled.

@@ -1,43 +1,42 @@
-name: Bug
-description: The launcher, a script or the prompt did something wrong
+name: 问题反馈
+description: 桌面、脚本或提示词出问题了
 labels: [bug]
 body:
   - type: dropdown
     id: part
     attributes:
-      label: Which part
+      label: 哪一部分
       options:
-        - Launcher (the home screen)
-        - Install script (build-and-install)
-        - Debloat or restore scripts
-        - tools/tv.py or b64push.py
-        - The prompt (PROMPT.md)
-        - Website (cleanyour.tv)
+        - 桌面（主屏幕）
+        - 安装脚本（build-and-install）
+        - 清理/还原脚本（disable.sh、restore.sh）
+        - tools/tv.py 或 b64push.py
+        - 提示词（PROMPT.md）
     validations:
       required: true
   - type: input
     id: tv
     attributes:
-      label: TV model and Android version
-      placeholder: Xiaomi MiTV-MOOQ1, Android TV 10
+      label: 电视型号和 Android 版本
+      placeholder: VIDAA_TV（海信，MT9653），Android 11
     validations:
       required: true
   - type: textarea
     id: what
     attributes:
-      label: What happened, and what you expected
+      label: 发生了什么，你期望是什么
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
-      label: Steps to reproduce
+      label: 复现步骤
       placeholder: |
-        1. Press Down twice from the dock
-        2. Press Home
+        1. 从停靠栏按两次下
+        2. 按 Home 键
   - type: textarea
     id: logs
     attributes:
-      label: Output or screenshot
-      description: Script output, a `logcat` excerpt, or a screenshot pulled from the TV.
+      label: 输出或截图
+      description: 脚本输出、`logcat` 片段，或者从电视上拉下来的截图。
       render: shell

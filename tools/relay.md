@@ -1,38 +1,27 @@
 # tools/relay.py
 
-Forwards a port on this computer to the TV's ADB port. Use it when your coding assistant runs its commands in
-a sandbox that can reach this computer but not other devices on your network. Claude Code on macOS is the
-usual case: Local Network privacy blocks its sandbox, so `tools/tv.py` times out or says "No route to host"
-even though the TV answers from an ordinary terminal.
+把本机的一个端口转发到电视的 ADB 端口。用在「助手的命令跑在沙箱里，能连本机但连不到局域网其他设备」的场景。macOS 上的 Claude Code 是典型情况：本地网络隐私权限会拦沙箱，`tools/tv.py` 超时或者报「No route to host」，而在普通终端里电视是通的。
 
 ```bash
-# In an ordinary terminal (Terminal, iTerm, VS Code), and leave it running:
+# 在普通终端（Terminal、iTerm、VS Code）里跑，并保持运行：
 tools/venv/bin/python -I tools/relay.py 192.168.1.50
 
-# Then, wherever the assistant runs the tools:
+# 然后在助手执行工具的地方：
 export TV_HOST=127.0.0.1 TV_PORT=15555
 tools/venv/bin/python -I tools/tv.py --probe
 ```
 
-- **Options:** `--tv-port` if the TV's ADB port isn't 5555; `--port` for another local port (run one relay
-  per TV, each on its own port). The TV's address defaults to `$TV_HOST`.
-- **It prints the `TV_HOST`/`TV_PORT` to use**, and one line each time it can't reach the TV.
-- **Stop it with Ctrl-C** when you're done.
+- **参数**：`--tv-port` 指定电视的 ADB 端口（不是 5555 时用）；`--port` 指定本地端口（一台电视一个转发，各自占一个端口）。电视地址默认取 `$TV_HOST`。
+- **它会打印该用的 `TV_HOST` / `TV_PORT`**，连不上电视时每次打印一行。
+- **用完 Ctrl-C 停掉**。
 
-## Safety
+## 安全
 
-- **It listens on `127.0.0.1` only**, never on your network, and has no option to change that. Other
-  devices can't use it to reach your TV.
-- **Programs on this computer can reach the TV's ADB port through it while it runs.** ADB still needs a key
-  the TV has accepted ("Allow USB debugging?"), but stop the relay when you're done, as you'd close network
-  ADB itself.
+- **只监听 `127.0.0.1`**，不监听网络，也没有改的选项。别的设备没法借它连到你的电视。
+- **它运行期间，本机上的程序都能通过它访问电视的 ADB 端口。** ADB 本身仍然需要电视接受过的密钥，但用完就停，跟直接关掉网络 ADB 是一个道理。
 
-## When it fails
+## 失败时
 
-- **"cannot reach 192.168.1.50:5555"**, printed by the relay: the TV is off or in standby (some TVs drop off
-  the network), on another network, or network debugging was switched off. The tools then see the connection
-  reset by peer.
-- **"cannot listen on 127.0.0.1:15555"**: a relay is already running on that port. Use it, or pick another
-  `--port`.
-- **"that is the relay itself"**: the TV's address was given as `127.0.0.1` with the relay's own port. Give
-  the TV's IP address.
+- **转发打印「cannot reach 192.168.1.50:5555」**：电视关机或在待机（有些电视会掉网）、在别的网络，或者网络调试被关了。这时工具看到的是连接被重置。
+- **「cannot listen on 127.0.0.1:15555」**：那个端口已经有转发在跑。直接用它，或者换一个 `--port`。
+- **「that is the relay itself」**：电视地址写成了 `127.0.0.1`，还配了转发自己的端口。填电视的真实 IP。

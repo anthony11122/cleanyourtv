@@ -1,39 +1,25 @@
-# Sky
+# 时段天空
 
-An optional backdrop that follows the clock: night blues until dawn, a soft blue day, then a warm
-horizon that peaks just before eight in the evening. It is off in the built-in configuration, so a
-launcher built from this repository behaves exactly like before until a theme turns it on.
+一个可选的背景层，跟着时钟走：天亮前是夜蓝，白天淡蓝，傍晚在八点前泛暖。内置配置里是关的，所以不推主题时桌面和以前完全一样。
 
 ```json
 { "sky_intensity": 60 }
 ```
 
-![The backdrop at dusk](sky-sunset.jpg)
-
-Push that as a theme's `config.json` and restart Home:
+写成主题的 `config.json` 推上去，再重启桌面：
 
 ```bash
 TV_HOST=192.168.1.50 tools/theme.sh themes/your-theme
 ```
 
-## What it draws
+## 画的是什么
 
-A full-screen gradient in three bands — top, middle, bottom — with a soft warm glow near the horizon
-whose horizontal position follows the sun: left at sunrise, right at sunset. `sky_intensity` is its
-opacity, 0 to 100; the colours themselves are interpolated between a handful of anchors through the
-day, which is what makes it drift instead of switching at fixed hours.
+整屏三段渐变（上、中、下），地平线附近有一团柔和暖光，横向位置跟着太阳走：日出在左，日落在右。`sky_intensity` 是它的不透明度，0 到 100；颜色本身在一整天的若干个锚点之间插值，所以是缓慢漂移，不是在固定时刻硬切。
 
-It sits behind everything, over the wallpaper when there is one, and the palette was chosen dark on
-purpose: the white clock, the greeting, the hero name and the dock band all keep their contrast at
-the default 60.
+它铺在所有内容之下、壁纸之上。配色是故意压暗的：默认 60 的时候，白色时钟、问候语、大标题和停靠栏底板的对比度都还在。
 
-## Cost
+## 开销
 
-`Sky` is pure maths — no Android types, no clock of its own; the caller passes the minutes since
-midnight, which is why the palette is unit-tested on the JVM. `SkyView` renders one 480×270 bitmap
-and redraws it once a minute, from the same minute tick that updates the clock. Nothing is animated
-and nothing is requested: the backdrop is the only change, and a TV with 1 GB of RAM has nothing to
-keep up with.
+`Sky` 是纯数学，不碰 Android 类型、没有自己的时钟——调用方把「今天的第几分钟」传进来，所以调色板可以在 JVM 上直接跑单测。`SkyView` 渲染一张 480×270 的位图，每分钟重画一次，和时钟共用同一个分钟 tick。没有动画、没有请求，1 GB 内存的电视也毫无压力。
 
-Turning the key off restores the plain background (or the theme's `wallpaper`/`background_color`)
-on the next Home start.
+关掉这个键，下次进桌面就回到纯背景（或者主题的 `wallpaper` / `background_color`）。

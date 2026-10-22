@@ -1,183 +1,141 @@
-# Themes
+# 主题
 
-A theme is a folder with a `config.json` and, optionally, a `wallpaper.jpg`. Pushing one changes the
-launcher's dock, layout and look on the TV without rebuilding the APK: the launcher reads
-`config.json` as an overlay over its built-in `config.xml` the next time it starts.
-Choices made in Launcher settings take priority until you choose Follow theme. Pushing a theme or
-using `tools/theme.sh --reset` also clears those on-TV column and motion choices.
+一个主题就是一个文件夹，里面放 `config.json`，可选再放 `wallpaper.jpg`。推上去之后，桌面下次启动会把 `config.json` 叠加在内置的 `config.xml` 上，换配色、壁纸、停靠栏和列数都不用重新打包。
+
+在电视上的「桌面设置」里改过的选项优先级更高，直到你选「跟随主题」。推主题或执行 `tools/theme.sh --reset` 也会清掉电视上的这些选择。
 
 ```bash
-TV_HOST=192.168.1.50 tools/theme.sh themes/aurora          # push a theme and restart Home
-TV_HOST=192.168.1.50 tools/theme.sh --reset                # back to the built-in config.xml
+TV_HOST=192.168.1.50 tools/theme.sh themes/aurora          # 推主题并重启桌面
+TV_HOST=192.168.1.50 tools/theme.sh --reset                # 回到内置 config.xml
 powershell -ExecutionPolicy Bypass -File tools\theme.ps1 -TvHost 192.168.1.50 themes\aurora
 ```
 
-| Theme | What it does | Screenshot |
+| 主题 | 效果 | 截图 |
 |---|---|---|
-| `default/` | The built-in look written out as JSON, as a starting point for your own | <img src="default/screenshot.jpg" width="320" alt="default theme"> |
-| `aurora/` | A dark aurora wallpaper (teal and violet on navy, darker at the bottom) with a matching background colour | <img src="aurora/screenshot.jpg" width="320" alt="aurora theme"> |
-| `dussehra/` | Festive skin for Dussehra (ends 21 Oct 2026): a marigold toran, a faint gold rangoli, a diya for Wi-Fi, a bell for Inputs, a marigold for Settings and a petal shower | <img src="dussehra/screenshot.jpg" width="320" alt="dussehra theme"> |
-| `glass/` | Dark navy wallpaper with soft teal and violet light, the cinematic top shelf, a frosted-glass dock, icon-only buttons and the focus glow in the app's colour, gliding without overshoot | <img src="glass/screenshot.jpg" width="320" alt="glass theme"> |
-| `scenes/` | 14 dark illustrated landscapes in `wallpapers/`, a new one every hour; drawn from code by `tools/scenes_wallpapers.py` | <img src="scenes/screenshot.jpg" width="320" alt="scenes theme"> |
-| `six-columns/` | Six smaller tiles per row and one grid row visible under the dock | <img src="six-columns/screenshot.jpg" width="320" alt="six-columns theme"> |
+| `default/` | 内置外观写成 JSON，改自己的主题时当起点 | <img src="default/screenshot.jpg" width="320" alt="default 主题"> |
+| `aurora/` | 深色极光壁纸（深蓝底上的青绿和紫色，底部更暗），配色跟壁纸一致 | <img src="aurora/screenshot.jpg" width="320" alt="aurora 主题"> |
+| `glass/` | 深蓝壁纸 + 柔和青紫光，影院式顶部展台、磨砂停靠栏、纯图标按钮，焦点光晕取应用主题色 | <img src="glass/screenshot.jpg" width="320" alt="glass 主题"> |
+| `scenes/` | `wallpapers/` 里 14 张深色插画风景，每小时换一张，由 `tools/scenes_wallpapers.py` 用代码画出来 | <img src="scenes/screenshot.jpg" width="320" alt="scenes 主题"> |
+| `six-columns/` | 每行 6 个更小的图标，停靠栏下面再露一行 | <img src="six-columns/screenshot.jpg" width="320" alt="six-columns 主题"> |
+| `dussehra/` | 排灯节皮肤（到 2026-10-21）：万寿菊花环、淡金坛城、油灯当 Wi-Fi 图标、铜铃当输入源、万寿菊当设置、开机第一次进桌面撒花瓣 | <img src="dussehra/screenshot.jpg" width="320" alt="dussehra 主题"> |
 
-Every theme folder has a `screenshot.jpg` of Home with that theme on a real TV. `tools/theme.sh` never
-pushes it; it is only here so you can see a theme before you try it.
+每个主题目录都有一张 `screenshot.jpg`，是真机推上主题后截的。`tools/theme.sh` 不会推它，只是给你先看看效果。
 
-## Keys
+## 配置项
 
-Every key is optional; a missing key keeps the value from `config.xml`, an unknown or wrongly typed key
-is ignored, and a file that doesn't parse is ignored as a whole, so a theme can never break Home.
+所有键都是可选的：缺的键沿用 `config.xml` 的值；写错类型或者不认识的键直接忽略；整个文件解析失败也忽略，所以主题永远弄不坏桌面。
 
-| Key | Type | Meaning |
+| 键 | 类型 | 含义 |
 |---|---|---|
-| `dock_apps` | list of package names | The dock row, in order; missing apps are skipped |
-| `fill_dock` | bool | Fill the dock slots `dock_apps` leaves free with the first grid apps (true by default); false leaves them empty |
-| `hidden_apps` | list of package names | Never shown as tiles |
-| `live_tv_package`, `live_tv_action` | string | The Live TV app and, if it has no leanback entry, the action to start it with |
-| `live_tv_input_id` | string | Exact system tuner for the Inputs menu's Live TV row; opens its channel collection. Empty keeps automatic selection. Missing input or unsupported collection falls back to the app's normal launch. [HAAM satellite example](../docs/devices/haam-r4.md) |
-| `source_panel_service`, `source_panel_action` | string | The TV's own source panel, for sets with no TvInputManager: a service, or an activity (BYINTEK U4). Without a Live TV app, the Inputs pill opens it directly |
-| `source_panel_extra` | `"name=value"` | One int extra sent with the source panel (Coocaa OS: `control_center_command=100`) |
-| `coocaa_sources` | bool | Coocaa OS (Skyworth, China): list the sources from `com.skyworth.tv` in the Inputs menu, ahead of the source panel |
-| `launch_actions` | list of `"package=action"` | Tiles that open a screen of the app instead of its start screen; an action that no longer resolves opens the app normally (MagentaTV's guide: `com.telekom.onetv.tv.pl=com.telekom.onetv.tv.pl.action.PROGRAM_GUIDE`) |
-| `app_labels` | list of `"package=Name"` | A tile's name instead of the app's own (MagentaTV as `com.telekom.onetv.tv.pl=TV`) |
-| `app_banners` | list of `"package=banner_name"` | A tile's artwork from a `banner_*` drawable bundled with the launcher (`banner_tv`: magenta with the Live TV glyph) |
-| `input_action` | string | Action sent with an HDMI/AV row's channel URI when nothing handles the standard `VIEW` (XGIMI: `com.xgimi.action.hdmiPlayer`). Only a handler-less set gets here; any app that claims the channel MIME type takes the row instead, so check with `query-activities` ([#805](https://github.com/Gathin23/cleanyourtv/issues/805)) |
-| `input_uri_scheme` | string | Scheme an HDMI/AV row's passthrough URI is sent with instead of `content://`, with no MIME type (YaOS: `live-tv`, which its source player answers) |
-| `input_sources` | list, `config.xml` only | Vendor source numbers for the Inputs menu, `HW<n>=<number>` by the input id's last part; a mapped input opens by sending `input_action` with the number as the int extra `input`, and `HW<n>=-` leaves a port the set doesn't have out of the menu. Xiaomi/Redmi China firmware: [redmi-mitv-mftp0](../examples/redmi-mitv-mftp0/). Not read from a theme |
-| `columns` | 1 to 8 | Tiles per row; tiles shrink to fit from 5 up |
-| `rows_below_dock` | 0 to 3 | Grid rows left visible under the dock; tiles shrink if the dock, its title and that many rows would not fit the screen height |
-| `dock_title` | bool | The focused dock app's name in large type above the dock (`true`); `false` keeps only the glow |
-| `dock_row` | bool | The dock as its own row with a band (`true`); `false` makes the dock apps the first tiles of one plain grid |
-| `reorder_button` | bool | A reorder button in the top bar (`false` by default); reordering is always in the Settings button's long-press menu |
-| `show_network_pill` | bool | The Wi-Fi/Ethernet pill in the top bar (`true` by default); `false` hides it |
-| `show_inputs_pill` | bool | The Inputs pill in the top bar, shown when the TV has inputs (`true` by default); `false` hides it; what the remote's Input button does is unchanged |
-| `icon_only_buttons` | bool | Wi-Fi and Settings as round icon buttons; Inputs keeps its label (`false` by default) |
-| `top_menu` | bool | Inputs, Wi-Fi and Settings folded into one round gear, centred on the header: OK drops a menu with the three, hold OK keeps the launcher menu (`false` by default) |
-| `launcher_settings_button` | bool | Make the header Settings action open Launcher settings directly with a matching 22dp home icon; also changes the Settings row when `top_menu` is on. Hold OK keeps module-card and ordering tools. The settings page includes Reorder apps and TV settings (`false` by default) |
-| `wifi_label_width` | 0 to 300 | With `icon_only_buttons`, keep the network name on the Wi-Fi pill up to this width in dp, cut with an ellipsis; 0 leaves only the icon |
-| `library_button` | bool | The app library as a round button in the top bar, beside Settings; needs `app_library`. Closing the library returns to it |
-| `always_show_names` | bool | Names under every tile, dimmed until focused, the dock included (its band grows to hold them); `false` by default shows only the focused tile's name |
-| `wallpaper_true_color` | bool | Decode wallpapers in 32-bit colour (8 MB at 1080p) instead of RGB_565 (4 MB), which bands dark gradients such as a night sky; for TVs with 2 GB or more (`false` by default) |
-| `app_library` | bool | An App library pill after the last Home row: every installed app, add one to Home or take it off (`false` by default). The choices stay on the TV when a theme is pushed or reset; see [docs/app-library.md](../docs/app-library.md) |
-| `shamsi_date` | bool | Show the Solar Hijri date above the Gregorian one |
-| `greeting_name` | string | A name after the greeting, e.g. `"Mr. Trịnh"` for GOOD MORNING, MR. TRỊNH; empty for the greeting alone |
-| `module_cards` | bool | Look for module cards and ask about them (`true`); `false` turns the feature off |
-| `reduced_motion` | bool | Calmer motion for weak GPUs: highlight settles in 5 frames, animations 90 ms or less, no fades, no tile entrance |
-| `reduced_motion` | bool | Calmer motion for weak GPUs: stiff highlight spring, no tile overshoot, short fades, no entrance replay |
-| `boot_to_live_tv` | bool | Open the Live TV app (`live_tv_package`) on the first Home after the TV starts, once per boot |
-| `focus_overshoot` | bool | The highlight and the focused tile swing past their target before settling (`true` by default); `false` glides straight there with smooth scrolling |
-| `vpn_app` | string | App the network pill opens when a VPN is configured; also shows a red "VPN off" badge while no VPN is up |
-| `animations` | bool | Basic focus, glass, title and tile entrance motion; true by default |
-| `advanced_effects` | bool | Optional lifted tile, icon zoom, smooth ambient colour and app opening effects; false by default |
-| `show_home_settings_shortcut` | bool | Keep the optional Default-home tile visible when the TV has a home picker; false by default |
-| `show_stats` | bool | One line under the clock with CPU, free memory and free storage. Off unless set |
-| `handle_view_inputs` | bool | Answer the system input switcher (`VIEW_INPUTS`, what the remote's Input button becomes) with the Inputs menu, for sets whose stock launcher was its only handler (Hisense huangshan); `false` by default so a TV with its own input picker never gets a chooser |
-| `background_color` | `#RRGGBB` | Colour behind everything; black by default |
-| `sky_intensity` | 0 to 100 | Time-of-day backdrop: a dark gradient that follows the clock, 0 hides it (default) |
-| `wallpaper` | bool | Show `wallpaper.jpg` from the theme folder (`true`), or ignore it (`false`) |
-| `wallpaper_rotation_minutes` | 0 to 1440 | Rotate images in the theme's `wallpapers/` folder at this interval; 0 keeps the single-image behaviour. A negative or non-numeric value is ignored, and 0 means "no rotation", not "every minute" |
-| `wallpaper_order` | `shuffle` or `sequential` | How a collection advances. `shuffle` (the default, and what launchers did before this key existed) avoids repeating the current picture; `sequential` walks the folder in filename order and wraps at the end. An unknown value falls back to `shuffle` |
-| `wallpaper_dim` | 0 to 90 | Black overlay over wallpaper images, in percent; 0 by default and no shade view at all |
-| `dock_opacity` | 30 to 100 | Opacity of the dock's band, in percent, so a wallpaper shows through it; 100 by default (the cinematic shelf keeps its own translucent band). Launcher settings on the TV offers 100, 70, 50 or 30, which wins until the next theme push or Follow theme |
-| `wallpaper_captions` | bool | With a rotating collection, the shown picture's name under the top-right buttons, from `wallpapers/captions.txt` (`001.jpg<TAB>Dusk over the peaks`, one per line); a picture without a line shows no name (`false` by default) |
-| `tile_menu` | bool | Hold OK on a tile opens a small menu: Move, Remove from Home (with `app_library`) and App info. `false` (the default) keeps holding OK as a shortcut to the app's App info page |
-| `festival` | string | Turns on a festive skin: the network pill becomes a diya whose flame follows the connection, Inputs a temple bell, Settings a marigold, and the first Home of the day gets a petal shower. `dussehra` and `diwali` have built-in greetings |
-| `festival_until` | `YYYY-MM-DD` | Last day the festive skin shows; it switches itself off after that. A malformed date turns it off |
-| `greeting` | string | Replaces the time-of-day greeting while the festive skin is on |
-| `accent_color` | `#RRGGBB` | Colour of the focus glow while the festive skin is on; diya gold if not set |
-| `settings_key_keycodes` | list of keycodes | Remote buttons that open Settings, for `HomeKeyService` (TCL Google TV gear: `[83]`) |
-| `settings_key_panel` | bool | Those buttons open a small quick settings panel (TV settings, Display, Network, Apps, Launcher settings) instead of the TV's Settings |
-| `restore_key_services` | bool | After a force stop of the launcher, Home puts the remote's accessibility helpers (`HomeKeyService`, `InputKeyService`) back on the enabled list; needs `RESTORE_KEY_SERVICES=1` at install. Off by default |
-| `input_key_keycodes` | list of keycodes | More remote buttons that open the input switcher, for `InputKeyService` (`KEYCODE_TV` and `KEYCODE_TV_INPUT` always do) |
-| `app_keys` | list of strings | Remote buttons that open an app, as `"190:com.google.android.youtube.tv"` or `"KEYCODE_BUTTON_3:com.google.android.youtube.tv"`, or by scancode as `"scan:490:com.wbd.hbomax"` for remotes that share one keycode between app buttons (Sony BRAVIA), for `InputKeyService` or `HomeKeyService` |
-| `key_filter` | bool | `false` makes the key helpers stop filtering keys while staying enabled. Use it on firmware where any key-filtering accessibility service breaks long-press repeat (TCL Google TV on Android 12): the remote buttons above stop working, and volume repeat comes back |
-| `app_keys` | list of strings | Remote buttons that open an app, as `"190:com.google.android.youtube.tv"` or `"KEYCODE_BUTTON_3:com.google.android.youtube.tv"`, or by scancode as `"scan:490:com.wbd.hbomax"` for remotes that share one keycode between app buttons (Sony BRAVIA), for `InputKeyService` or `HomeKeyService`. `"input:<input id>"` in place of the package switches to a TV input instead, e.g. `"scan:227:input:com.tcl.tvinput/.passthroughinput.TvPassThroughService/HW1413744640"` for an HDMI port (ids from `dumpsys tv_input`) |
-| `app_keys` | list of strings | Remote buttons that open an app, as `"190:com.google.android.youtube.tv"` or `"KEYCODE_BUTTON_3:com.google.android.youtube.tv"`, for `InputKeyService` or `HomeKeyService` |
-| `stock_home_redirect` | string | Stock launcher package; if the firmware turns it back on (XGIMI), its home screen is sent straight back here (`HOME_KEY_SERVICE=1`) |
-| `app_keys` | list of strings | Remote buttons that open an app, as `"190:com.google.android.youtube.tv"` or `"KEYCODE_BUTTON_3:com.google.android.youtube.tv"`, or by scancode as `"scan:490:com.wbd.hbomax"` for remotes that share one keycode between app buttons (Sony BRAVIA), for `InputKeyService` or `HomeKeyService`. Prefix an entry with `hold:` to open a second app on a long press, e.g. `"hold:190:com.netflix.ninja"` |
-| `race_calendar` | list of races | F1 race-weekend mode: from 12 hours before a weekend's first session until 4 hours after the race starts, a panel under the clock shows the next session with a countdown (or the live one) and the weekend's session times in the TV's time zone. Write it with `tools/race_calendar.py <theme folder>`, which fetches the season from the free Jolpica API; the launcher itself never goes online |
-| `home_idle_clock_minutes` | 0 to 1440 | Minutes Home may sit untouched before it shows the clock screensaver (a thin clock and date drifting over a slow glow, as the system "Clock" screensaver does). Any key returns to Home. It starts only from Home, never over Live TV or an app; 0 is off (default) |
-| `glow_style` | string | Shape of the glow behind the focused app, in its colour: `radial` (default) or `horizon`, the colour washing down from the top edge to black; the cinematic shelf keeps its own |
-| `cinematic_home` | bool | Cinematic top shelf: the focused dock app's artwork, softened, fills the top of the screen in its colour, with a larger name, "Last opened" (apps opened from Home), dock position dots, a focus glow in the app's colour and a translucent dock band; off by default |
-| `dock_glass` | bool | The dock band as light frosted glass like the top bar's pills (`false` by default); suits `sky_intensity` or a wallpaper, where the solid band reads as a dark slab |
-| `ambient_glow` | bool | The glow behind the dock in the focused app's colour (`true` by default); `false` keeps only `background_color` or the wallpaper, e.g. for a calm photo background |
-| `app_glow` | bool | The focus highlight glows in the focused app's colour on every tile, as `cinematic_home` does for the dock (`false` by default) |
+| `dock_apps` | 包名列表 | 停靠栏的应用和顺序，没装的自动跳过 |
+| `fill_dock` | bool | `dock_apps` 没填满的槽位用网格里前几个应用补上（默认 true）；false 就空着 |
+| `hidden_apps` | 包名列表 | 永远不显示成图标 |
+| `live_tv_package`、`live_tv_action` | string | 有线电视应用；如果它没有 leanback 入口，用这个 action 启动 |
+| `live_tv_input_id` | string | 输入源菜单里「有线电视」那一行对应的系统调谐器 id，打开它的频道列表。留空自动选 |
+| `source_panel_service`、`source_panel_action` | string | 电视自带的输入源面板（没有 TvInputManager 的机型用）。可以写服务，也可以写 Activity。没有 Live TV 应用时，输入源按钮直接开它 |
+| `source_panel_extra` | `"name=value"` | 跟输入源面板一起发的一个 int extra（酷开 OS：`control_center_command=100`） |
+| `coocaa_sources` | bool | 酷开 OS：输入源菜单里先列 `com.skyworth.tv` 报上来的信号源 |
+| `launch_actions` | `"包名=action"` 列表 | 让某个应用图标打开它内部的某个页面而不是首页；action 失效时退回正常启动 |
+| `app_labels` | `"包名=名字"` 列表 | 图标显示自定义名字，不用应用自己的名字 |
+| `app_banners` | `"包名=图名"` 列表 | 图标用桌面内置的 `banner_*` 图 |
+| `input_action` | string | HDMI/AV 那一行的 channel URI 没人处理时改发的 action |
+| `input_uri_scheme` | string | HDMI/AV 那一行改用的 URI scheme（默认 `content://`），不带 MIME 类型 |
+| `input_sources` | 列表，只认 `config.xml` | 厂商信号源编号，按输入 id 末位写 `HW<n>=<编号>`；`HW<n>=-` 表示这台机器没有这个口。主题文件里读不到 |
+| `columns` | 1 到 8 | 每行几个图标，5 个以上自动缩小 |
+| `rows_below_dock` | 0 到 3 | 停靠栏下面露几行网格；放不下时图标缩小 |
+| `dock_title` | bool | 停靠栏上方用大字显示当前应用名（true）；false 只留光晕 |
+| `dock_row` | bool | 停靠栏单独一行带底板（true）；false 就跟网格连成一片 |
+| `reorder_button` | bool | 顶栏加一个排序按钮（默认 false）；排序功能一直在设置按钮的长按菜单里 |
+| `show_network_pill` | bool | 顶栏的 Wi-Fi/有线按钮（默认 true） |
+| `show_inputs_pill` | bool | 顶栏的输入源按钮（默认 true）；遥控器上的输入源键不受影响 |
+| `icon_only_buttons` | bool | Wi-Fi 和设置变成圆形纯图标按钮，输入源保留文字 |
+| `top_menu` | bool | 输入源、Wi-Fi、设置收进一个圆形齿轮，点 OK 展开菜单，长按 OK 还是桌面菜单 |
+| `launcher_settings_button` | bool | 顶栏设置直接打开桌面设置；长按 OK 仍是排序和模块卡片 |
+| `wifi_label_width` | 0 到 300 | 配合 `icon_only_buttons`，Wi-Fi 按钮上保留多宽的网络名（dp），超出省略；0 只留图标 |
+| `library_button` | bool | 顶栏加一个应用库按钮，需要同时开 `app_library` |
+| `always_show_names` | bool | 所有图标下面都显示名字，未聚焦时压暗；停靠栏底板会自动加高 |
+| `wallpaper_true_color` | bool | 壁纸用 32 位色解码（1080p 约 8 MB）而不是 RGB_565（4 MB），深色渐变不起色带；2 GB 内存以上再开 |
+| `app_library` | bool | 首页最后一行加一个应用库入口：列出所有已装应用，一键加回桌面或移除（默认 false） |
+| `shamsi_date` | bool | 在公历日期上方再显示波斯历 |
+| `greeting_name` | string | 问候语后面加名字 |
+| `module_cards` | bool | 是否扫描模块卡片并询问（默认 true） |
+| `reduced_motion` | bool | 弱 GPU 用的降动效模式：高亮 5 帧内停住，动画不超过 90 ms，没有淡入淡出和图标入场 |
+| `boot_to_live_tv` | bool | 开机后第一次进桌面直接打开有线电视，每次开机只做一次 |
+| `focus_overshoot` | bool | 高亮和图标会先冲过目标再回弹（默认 true）；false 直接滑过去 |
+| `vpn_app` | string | 配了 VPN 时网络按钮打开的应用；VPN 没起来时显示红色「VPN off」角标 |
+| `animations` | bool | 基础动效：焦点、玻璃高亮、标题、图标入场（默认 true） |
+| `advanced_effects` | bool | 可选的图标抬起、图标放大、环境色平滑过渡和打开应用动效（默认 false） |
+| `show_home_settings_shortcut` | bool | 电视有主屏幕选择器时保留「默认桌面」图标（默认 false） |
+| `show_stats` | bool | 时钟下面加一行 CPU、可用内存、可用存储（默认关） |
+| `handle_view_inputs` | bool | 用输入源菜单应答系统的 `VIEW_INPUTS`（遥控器输入源键变成的那个），给「只有原桌面应答它」的机型用（海信 huangshan 就是这样）；默认 false，避免本来有输入源面板的电视多出一层选择 |
+| `background_color` | `#RRGGBB` | 背景色，默认黑 |
+| `sky_intensity` | 0 到 100 | 跟随时段的天空渐变，0 关闭（默认） |
+| `wallpaper` | bool | 是否显示主题里的 `wallpaper.jpg`（默认 true） |
+| `wallpaper_rotation_minutes` | 0 到 1440 | 主题 `wallpapers/` 目录的轮换间隔，0 表示不轮换 |
+| `wallpaper_order` | `shuffle` 或 `sequential` | 轮换顺序。`shuffle` 默认且尽量不重复当前这张；`sequential` 按文件名走，到头回到第一张 |
+| `wallpaper_dim` | 0 到 90 | 壁纸上的黑色蒙版百分比，默认 0 |
+| `dock_opacity` | 30 到 100 | 停靠栏底板不透明度，让壁纸透出来；默认 100 |
+| `wallpaper_captions` | bool | 轮换时在右上角显示图片名，名字来自 `wallpapers/captions.txt`（一行一张，`001.jpg<TAB>名字`） |
+| `tile_menu` | bool | 长按 OK 弹出小菜单：移动、从桌面移除（需 `app_library`）、应用信息。默认 false 时长按 OK 直接进应用信息 |
+| `festival` | string | 节日皮肤：网络按钮变油灯、输入源变铜铃、设置变万寿菊，当天第一次进桌面撒花瓣 |
+| `festival_until` | `YYYY-MM-DD` | 节日皮肤显示到哪天，过了自动关 |
+| `greeting` | string | 节日期间替换问候语 |
+| `accent_color` | `#RRGGBB` | 节日期间焦点光晕的颜色 |
+| `settings_key_keycodes` | 键码列表 | 打开设置的遥控器按键（`HomeKeyService` 用） |
+| `settings_key_panel` | bool | 那些键改成打开一个小的快捷设置面板（电视设置、显示、网络、应用、桌面设置） |
+| `restore_key_services` | bool | 桌面被强停之后，下次进桌面把按键辅助服务重新写回启用列表；安装时要带 `RESTORE_KEY_SERVICES=1` |
+| `input_key_keycodes` | 键码列表 | 更多打开输入源切换的按键（`KEYCODE_TV` 和 `KEYCODE_TV_INPUT` 本来就管用） |
+| `app_keys` | 字符串列表 | 遥控器按键打开指定应用，写成 `"190:com.google.android.youtube.tv"`、`"KEYCODE_BUTTON_3:com.google.android.youtube.tv"`，或用 scancode `"scan:490:com.wbd.hbomax"`；前缀 `hold:` 表示长按 |
+| `key_filter` | bool | false 让按键辅助服务保持启用但不再过滤按键，用于「任何按键过滤服务都会破坏长按连发」的固件 |
+| `stock_home_redirect` | string | 原桌面包名；固件把它重新启用时（XGIMI 会），把它的首页直接送回这里 |
+| `race_calendar` | 比赛列表 | F1 比赛周末模式：周末第一场前 12 小时到正赛开始后 4 小时，时钟下面显示倒计时和赛程。用 `tools/race_calendar.py <主题目录>` 写入，桌面本身不联网 |
+| `home_idle_clock_minutes` | 0 到 1440 | 桌面静止多少分钟后显示时钟屏保，任意键返回；0 关闭 |
+| `glow_style` | string | 焦点光晕形状：`radial`（默认）或 `horizon`（颜色从上边缘往下洗到黑） |
+| `cinematic_home` | bool | 影院式顶部展台：当前停靠栏应用的海报柔化后铺满上半屏，配大号名字、「上次打开」、停靠栏位置点 |
+| `dock_glass` | bool | 停靠栏底板做成跟顶栏一样的磨砂玻璃 |
+| `ambient_glow` | bool | 停靠栏后面的应用主题色光晕（默认 true） |
+| `app_glow` | bool | 每个图标的高亮都带应用主题色（默认 false） |
 
-## Wallpapers
+## 壁纸
 
-`wallpaper.jpg` is drawn full screen behind the launcher, centre-cropped. Keep it dark, 1920×1080 and
-under about 300 KB: the text, the hero name and the dock band are designed for black, and a 1 GB TV
-decodes the picture into memory on every Home start. Pictures larger than the screen are scaled down to
-it; a picture that is still over 4K (about 8.4 million pixels) after it is sampled down to the screen is not shown at all, and the plain colour stays.
+`wallpaper.jpg` 全屏铺满、居中裁切。建议 1920×1080、深色、300 KB 以内：文字、大标题和停靠栏都是按黑底设计的，而且 1 GB 的电视每次进桌面都要把这张图解码进内存。比屏幕大的图会先缩到屏幕尺寸；缩完还超过 4K（约 840 万像素）的图直接不显示，退回纯色背景。
 
-For a wallpaper collection, place JPEG, PNG or WebP files in the theme’s `wallpapers/` folder beside `config.json`, then set:
+要一组壁纸，就把 JPEG、PNG 或 WebP 放进主题的 `wallpapers/` 目录，然后写：
 
 ```json
 { "wallpaper": true, "wallpaper_rotation_minutes": 30, "wallpaper_dim": 40, "wallpaper_order": "sequential" }
 ```
 
-The last displayed picture is remembered on the TV, so a restart or reboot resumes from it rather than
-starting over at the first image in `sequential` mode. Missing an interval while the TV is asleep or
-unplugged does not replay the missed pictures: Home moves on at most once when it wakes. Replacing the
-collection starts playback from the new collection's first picture. A collection with one picture is
-shown once and never blanked on a timer. Images are centre-cropped to fill the 16:9 screen; dimming is
-drawn as a black overlay above the picture and below the launcher's text.
+电视会记住最后显示的那张，重启从它接着来，不会跳回第一张。睡眠或断电期间错过的轮换不补播，醒来最多换一次。换一组图就从新组的第一张开始。只有一张图的目录只显示那一张，不会定时变黑。图片居中裁切填满 16:9，蒙版画在图片之上、文字之下。
 
-When you apply a theme, its collection replaces the one already on the TV. Use filenames containing
-only letters, digits, underscores, dots and hyphens. Images can come from any source; check that you
-have permission to use them. The launcher considers
-up to 100 nonempty images, at most 10 MB each, skips unreadable files and keeps the last good background.
-An empty collection falls back to `wallpaper.jpg`, or the background colour if no image is available.
-`"wallpaper": false` disables both single-image and collection backgrounds.
+推主题会用新的一组图替换电视上原有的那组。文件名只用字母、数字、下划线、点和连字符。图片版权自己确认。桌面最多认 100 张非空图，单张不超过 10 MB，读不了的文件跳过并保留上一张。目录为空就退回 `wallpaper.jpg`，再没有就用背景色。`"wallpaper": false` 同时关掉单图和轮换。
 
-Selection is random without an immediate repeat when alternatives exist. The current image and its
-change time survive app/process restarts. Rotation runs only while Home is visible; on return from
-another app, an overdue background changes then. Images are decoded on a worker thread and bounded
-to the screen size. There is no download service, Internet permission or computer-side scheduler.
-The original system idle screensaver is left unchanged.
+有备选时随机选且不立刻重复。当前图片和更换时间在应用重启后仍然保留。轮换只在桌面可见时进行，从别的应用回来时如果已经超时会立刻换。图片在工作线程解码并限制在屏幕尺寸。没有下载服务、没有网络权限、没有电脑端定时任务。系统自带的屏保不受影响。
 
-On the TV, Launcher settings has a Wallpaper row: pick one picture from the collection (or the theme's
-`wallpaper.jpg`), or None. A pick shows that one picture and stops the rotation until you choose Theme
-default, press Follow theme, or push a theme again.
+电视上的「桌面设置」里有一行「壁纸」：从这组图里挑一张（或者主题的 `wallpaper.jpg`），或者选「无」。挑了之后轮换停止，直到你选「跟随主题」或重新推主题。
 
-## Reduced motion
+## 降动效
 
-`"reduced_motion": true` keeps the look but calms the movement and draws far fewer frames: the
-highlight slides without bouncing and settles within 5 frames, every animation (tile zoom, dropdowns,
-the app library) lasts 90 ms or less, names, the top shelf, the glow and the highlight appear instead of
-fading, and there is no tile entrance. Use it on TVs whose GPU cannot keep up; a MediaTek MT5895 on
-Android 10 is the known case. The default, `false`, keeps the normal motion.
+`"reduced_motion": true` 保留外观但大幅减少绘制：高亮不打弹、5 帧内停住，所有动画不超过 90 ms，名字、展台、光晕直接出现不淡入，没有图标入场。给 GPU 跟不上的机器用（已知案例：Android 10 上的 MT5895）。
 
 ```json
 { "reduced_motion": true }
 ```
 
-## Time-of-day backdrop
+## 时段天空
 
-`"sky_intensity": 60` draws a dark gradient over the wallpaper and behind everything else, that follows the
-clock: night blues, a soft blue day, then a warm horizon that peaks just before eight in the evening.
-The glow near the bottom edge travels from left to right with the sun. The colours stay dark so the
-white clock, the hero name and the dock band keep their contrast. It is drawn as one 480×270 bitmap
-and redrawn once a minute, never animated, so even a 1 GB TV has nothing to keep up with. `0` keeps
-the plain background; the default is off (the reference launcher looks exactly as before).
+`"sky_intensity": 60` 在壁纸之上、所有内容之下画一层跟随时段的深色渐变：夜里偏蓝，白天淡蓝，傍晚在八点前泛暖，底部的光从左往右跟着太阳走。颜色都压得比较暗，白色时钟、大标题和停靠栏的对比度不受影响。整层是一张 480×270 的位图，每分钟重画一次，不做动画，1 GB 的机器也毫无压力。`0` 关闭，默认就是关的。
 
 ```json
 { "sky_intensity": 60 }
 ```
 
-## Adding a theme
+## 加一个主题
 
-Open a PR with a new folder here containing:
+在这个目录下新建一个文件夹，放：
 
-- `config.json`, the theme itself.
-- `screenshot.jpg`, **required**: Home on a real TV with the theme pushed, not a mock-up or an
-  emulator. Take it with `tools/tv.py 'screencap -p /sdcard/s.png'` and
-  `tools/tv.py --pull /sdcard/s.png s.png`, then save it as a JPEG at 1280×720 (16:9) under 300 KB,
-  for example `sips -z 720 1280 -s format jpeg s.png --out screenshot.jpg` on macOS. Leave the focus on
-  the dock so the glow and the hero name show. A PR without it fails CI (`tests/test_themes.py`).
-- `wallpaper.jpg` or `wallpapers/` if the theme uses them.
+- `config.json`：主题本体；
+- `screenshot.jpg`：**必须**。真机推上主题后的桌面截图，不要模拟图、不要模拟器。用 `tools/tv.py 'screencap -p /sdcard/s.png'` 截、`tools/tv.py --pull /sdcard/s.png s.png` 拉下来，存成 1280×720 的 JPEG、300 KB 以内。焦点停在停靠栏上，让光晕和大标题都露出来；
+- `wallpaper.jpg` 或 `wallpapers/`：如果主题用到的话。
 
-Then add a row to the table above with the screenshot, the same way as the others. Keep the dock list
-generic (the big streaming apps) unless the theme is for a specific TV, and say which TV you tried it on
-in the PR description.
+然后在上面那张表里加一行，格式照抄别的行。停靠栏列表保持通用（主流流媒体应用），除非这个主题是给某台特定电视做的——那样的话在说明里写清楚机型。

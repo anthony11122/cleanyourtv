@@ -90,7 +90,7 @@ ARITY = {"--probe": 1, "--push": 3, "--pull": 3, "--batch": 1}
 
 # screencap writes the PNG on the TV and we pull the file afterwards: adb_shell's shell() decodes
 # what comes back as text, which corrupts an image, and `exec-out screencap -p` returns a broken
-# PNG on some MediaTek sets (docs/TROUBLESHOOTING.md). /data/local/tmp is writable from shell.
+# PNG on some MediaTek sets (docs/hisense/故障排查.md). /data/local/tmp is writable from shell.
 SHOT_REMOTE = "/data/local/tmp/cleanyourtv-shot.png"
 PNG = b"\x89PNG\r\n\x1a\n"
 # Key names go into a shell command on the TV, so only plain key names and numeric keycodes get through.
@@ -180,7 +180,7 @@ def screenshot(dev, local, keys=(), wait=1.0):
         # most sets, and PROMPT.md tells the agent to look at the screen rather than the ADB link.
         print(f"captured 0 bytes into {local}: Live TV and HDMI inputs come back empty on most TVs, as do "
               "some streaming apps (Netflix), so check what is on screen before the ADB connection "
-              "(see docs/TROUBLESHOOTING.md)", file=sys.stderr)
+              "(see docs/hisense/故障排查.md)", file=sys.stderr)
         return 1
     with open(local, "rb") as f:
         if f.read(len(PNG)) != PNG:
