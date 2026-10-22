@@ -264,6 +264,10 @@ tools/venv/bin/python -I tools/tv.py 'pm enable --user 0 com.hisense.tv.tiletran
 
 两种情况都指向同一个原因：无障碍服务没绑上。应用列表空是 Android 11+ 的包可见性限制——桌面必须声明 `<queries>` 才看得见别的应用，官方包已经声明了；如果你自己改过包名或重签过，先确认安装的是本仓库的包。按键没反应就看第 3 条，把服务清空重写。
 
+**9. 桌面图标少、直播电视没入口、开机弹摄像头提示**
+
+见 [docs/hisense/桌面应用显示.md](docs/hisense/桌面应用显示.md)。前两个已修，摄像头弹窗是固件行为，按遥控器「返回」可关。
+
 ## 免责声明
 
 - 改的是电视的系统设置（`pm disable-user`、`settings put`、`appops`），不是刷机。不卸载系统应用、不 root、不碰分区。
