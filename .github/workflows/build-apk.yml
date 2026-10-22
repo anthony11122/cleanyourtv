@@ -36,6 +36,17 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Decode signing keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "No signing secret set; release build will use the debug key."; exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.p12"
+          echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
+          echo "SIGNING_STORE_PASSWORD=${{ secrets.SIGNING_STORE_PASSWORD }}" >> "$GITHUB_ENV"
+
       - name: Build release APK
         working-directory: launcher
         run: |
