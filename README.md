@@ -86,6 +86,7 @@ tools/venv/bin/python -I tools/tv.py 'pm disable-user --user 0 com.jamdeo.tv.vod
 | 应用聚焦 | 焦点所在的应用图标放大、显示名字，背景浮起一层取自应用图标的柔光 |
 | 应用网格 | 4 / 5 / 6 / 7 列可调，列数变了图标自动缩放，不用重编 |
 | 遥控器排序 | 长按 OK 进入菜单，可以移动位置、从桌面移除、看应用信息；顺序存在电视上 |
+| 隐藏应用 | 默认隐藏系统应用（处理「设置」的包和从应用库 Add to Home 过的除外）；遥控器可在桌面长按图标选「Hide app」，或在应用库里 Hide / Unhide |
 | 时钟屏保 | 一块细字时钟在柔光上缓慢漂移，防烧屏；在系统屏保设置里选「时钟」即可 |
 | 输入源面板 | 右上角输入源按钮，列出 HDMI 口（带是否插着设备的标记）、AV、有线电视 |
 | 主题 | 推一个 `config.json` 就能换壁纸、配色、停靠栏和列数，不用重新打包 |
@@ -99,7 +100,13 @@ tools/venv/bin/python -I tools/tv.py 'pm disable-user --user 0 com.jamdeo.tv.vod
 | ![时钟屏保](docs/clock-screensaver.png) | ![长按 OK 移动图标](docs/tile-move.jpg) |
 | 时钟屏保，缓慢漂移防烧屏 | 长按 OK 选「移动」，方向键搬运图标 |
 
-改列数、换停靠栏应用、隐藏某个应用，都可以在电视上操作：焦点停在「设置」上长按 OK → 桌面设置。也可以用主题文件批量改：
+改列数、换停靠栏应用、隐藏某个应用，都可以在电视上操作：
+
+- 列数、停靠栏：焦点停在「设置」上长按 OK → 桌面设置。
+- 隐藏单个应用：桌面长按图标 → 菜单里选「Hide app」；应用库长按条目 → 「Hide app / Unhide」。隐藏后条目还留在应用库，标成 `Hidden`（系统应用是 `Hidden · System`）。
+- 系统应用：默认自动隐藏，不用维护包名列表。桌面设置页有「Hide system apps: On/Off」；应用库顶部有「Show system apps: On/Off」，打开后隐藏的系统应用会重新列出来——这是藏过头时的逃生通道。
+
+也可以用主题文件批量改（`hide_system_apps` 和旧的 `hidden_apps` 仍然有效，后者只是静态补充）：
 
 ```bash
 tools/theme.sh themes/aurora        # 推一个主题
@@ -111,12 +118,14 @@ tools/theme.sh --reset              # 恢复内置配置
 开机到桌面起来，中间这一段是这套方案最容易出问题的地方，先说清楚它是怎么走的：
 
 1. 通电，厂商 LOGO 和开机动画（这一段改不了，见「去广告与屏蔽更新」）。
-2. 系统发出开机广播。桌面收到 `BOOT_COMPLETED`、`LOCKED_BOOT_COMPLETED`、`HISENSE_BOOT_COMPLETED`、`USER_UNLOCKED` 中的任意一个，就开始排闹钟。
-3. 闹钟在开机后 **4 秒、12 秒、25 秒、45 秒、70 秒** 各响一次，每次尝试把桌面拉到前台。
-4. 每次尝试前先看两个条件：用户存储还没解锁（CE 未解锁）就跳过，因为桌面装在 CE 里根本起不来；桌面已经在前台也跳过，不抢焦点。
-5. 70 秒那次是兜底：海信这批机器冷启动慢，前几次经常撞上厂商动画还没走完。
+2. 系统启动时绑定无障碍服务 `HomeKeyService`。这个绑定不靠开机广播，屏幕还黑着也会发生。
+3. 服务连上后（`onServiceConnected`），桌面在 3 秒、10 秒、22 秒、40 秒、65 秒各检查一次（`Handler` 回调，不是 `AlarmManager`）。前台不是自己就调 `performGlobalAction(GLOBAL_ACTION_HOME)` 把桌面拉起来。
+4. 用户存储还没解锁（CE 未解锁）就先等 `USER_UNLOCKED`，解锁后再读配置、再排检查；桌面已经在前台就丢掉剩下的检查，不抢焦点。
+5. 65 秒那次是兜底：海信这批机器冷启动慢，前几次经常撞上厂商动画还没走完。
 
-所以正常情况下，你会看到厂商动画 → 短暂黑屏（1～3 秒）→ 桌面直接出现，不需要按任何键。如果你看到的是长时间黑屏，先按一下遥控器 Home 键，能起来说明是自启没跑成，看 [docs/hisense/开机自启.md](docs/hisense/开机自启.md) 里的排查命令。
+这条路径不需要 `SYSTEM_ALERT_WINDOW`：`GLOBAL_ACTION_HOME` 是系统级动作，不走 `startActivity`，不受后台启动限制；而且这个固件每次开机都用 `revokeRuntimePermission` 把 SAW 撤掉。实测无障碍方案 3/3 次冷启动成功，旧的 AlarmManager 方案 3 次里失败 2 次。
+
+所以正常情况下，你会看到厂商动画 → 短暂黑屏（1～3 秒）→ 桌面直接出现，不需要按任何键。如果你看到的是长时间黑屏，先按一下遥控器 Home 键，能起来说明是自启没跑成，看 [docs/hisense/开机自启.md](docs/hisense/开机自启.md) 里的排查命令。重装过 APK 的话，先确认无障碍服务还绑着——重装会把它从 `enabled_accessibility_services` 里移除。
 
 ## 去广告与屏蔽更新
 
@@ -199,7 +208,7 @@ tools/venv/bin/python -I tools/tv.py 'cmd package set-home-activity --user 0 com
 
 **1. 开机黑屏，只有背光没有画面**
 
-原桌面被禁之后，这台机器上没有任何应用响应开机广播，VIDAA 的启动流程找不到要拉起的东西，就一直停在黑屏。现在的桌面内置了开机自启（5 次重试 + CE 解锁感知），正常情况下不会再出现。已经黑了就按遥控器 Home 键，或者：
+原桌面被禁之后，这台机器上没有任何应用响应开机广播，VIDAA 的启动流程找不到要拉起的东西，就一直停在黑屏。现在由无障碍服务 `HomeKeyService` 在开机时把桌面拉起来（不依赖开机广播，也不需要 `SYSTEM_ALERT_WINDOW`），正常情况下不会再出现。已经黑了就按遥控器 Home 键，或者：
 
 ```bash
 tools/venv/bin/python -I tools/tv.py 'am start -n com.gathin.tvhome/.MainActivity'
@@ -214,7 +223,7 @@ tools/venv/bin/python -I tools/tv.py 'dumpsys activity activities | grep "Task{.
 
 **3. 重装桌面后无障碍服务不工作（设置里显示 Crashed services）**
 
-重装会把 `enabled_accessibility_services` 里的条目弄脏，系统认为服务崩了。清空再写回，一次搞定：
+重装会把 `enabled_accessibility_services` 里的条目弄脏，系统认为服务崩了。除了遥控器按键，开机自启也靠这个服务，不重绑就会停在黑屏。清空再写回，一次搞定：
 
 ```bash
 tools/venv/bin/python -I tools/tv.py 'settings get secure enabled_accessibility_services'
