@@ -23,6 +23,11 @@
          this permission (protection level normal, so it is granted at install). Ignored on other TVs. -->
     <uses-permission android:name="yandex.tv.permission.ACCESS_TV_SOURCE" />
 
+    <!-- Android 11+ blocks a background activity start (BAL) from a boot receiver, which is exactly how Home has
+         to come up on VIDDA when the stock launcher is gone. Holding this permission is the exemption; it is
+         granted over adb (appops set com.gathin.tvhome SYSTEM_ALERT_WINDOW allow), never requested on screen. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <!-- Android 11+ package visibility: lets the launcher list the TV apps it shows as tiles, and the
          apps that declare a module card (docs/specs/card.md). -->
     <queries>
@@ -195,8 +200,9 @@
 
         <!-- Brings Home up after a reboot. The stock launcher was disabled by the handover and had the only
              boot receiver, so VIDAA's boot sequence found nothing to start and the screen stayed black until
-             a Home key press. directBootAware: HISENSE_BOOT_COMPLETED and BOOT_COMPLETED both arrive late,
-             LOCKED_BOOT_COMPLETED comes earlier on a set with no keyguard. -->
+             a Home key press. This receiver does not start Home itself: it only arms BootStart's alarms, because
+             LOCKED_BOOT_COMPLETED comes before the CE storage is unlocked (MainActivity cannot start yet) and
+             BOOT_COMPLETED comes under the BAL restriction. USER_UNLOCKED re-arms the series once CE is usable. -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"
@@ -206,7 +212,16 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.HISENSE_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.USER_UNLOCKED" />
             </intent-filter>
         </receiver>
+
+        <!-- One alarm from BootStart. Not exported and no intent-filter: only our own alarms reach it, and it is
+             not directBootAware because Home itself lives in CE storage. -->
+        <receiver
+            android:name=".BootRetryReceiver"
+            android:enabled="true"
+            android:exported="false"
+            android:directBootAware="false" />
     </application>
 </manifest>
