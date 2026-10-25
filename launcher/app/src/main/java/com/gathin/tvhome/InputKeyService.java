@@ -21,6 +21,11 @@ public class InputKeyService extends AccessibilityService {
     private static final String ACTION_VIEW_INPUTS = "com.android.tv.action.VIEW_INPUTS";
 
     private int[] inputKeycodes = new int[0];
+    /** The TV's own source panel, for sets with no TvInputManager (Hisense VIDAA): what the Input key opens
+     *  when nothing on the TV answers com.android.tv.action.VIEW_INPUTS. */
+    private String sourcePanelService = "";
+    private String sourcePanelAction = "";
+    private String sourcePanelExtra = "";
     private Map<Integer, String> appKeys = Collections.emptyMap();
     private Map<Integer, String> appScancodes = Collections.emptyMap();
     private Map<Integer, String> holdAppKeys = Collections.emptyMap();
@@ -37,6 +42,9 @@ public class InputKeyService extends AccessibilityService {
         repairRecord = config.restoreKeyServices;
         if (repairRecord) ServiceRepair.connected(this, getClass());
         inputKeycodes = config.inputKeycodes;
+        sourcePanelService = config.sourcePanelService;
+        sourcePanelAction = config.sourcePanelAction;
+        sourcePanelExtra = config.sourcePanelExtra;
         appKeys = RemoteKeys.parseAppKeys(config.appKeys);
         appScancodes = RemoteKeys.parseAppScancodes(config.appKeys);
         RemoteKeys.applyKeyFilter(this, config.keyFilter);
@@ -58,13 +66,26 @@ public class InputKeyService extends AccessibilityService {
         if (RemoteKeys.handle(this, event, appKeys.get(event.getKeyCode()),
                 holdAppKeys.get(event.getKeyCode()))) return true;
         if (!isInputKey(event.getKeyCode())) return false;
-        if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+        if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) openInputs();
+        return true;
+    }
+
+    /**
+     * The system input switcher if the TV has one; otherwise the vendor panel from source_panel_service /
+     * source_panel_action. Hisense VIDAA has no TvInputManager input and no VIEW_INPUTS handler, so without
+     * this fallback the remote's Input button does nothing while another app is in front.
+     */
+    private void openInputs() {
+        Intent view = new Intent(ACTION_VIEW_INPUTS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (getPackageManager().resolveActivity(view, 0) != null) {
             try {
-                startActivity(new Intent(ACTION_VIEW_INPUTS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            } catch (ActivityNotFoundException ignored) {
+                startActivity(view);
+                return;
+            } catch (ActivityNotFoundException | SecurityException ignored) {
+                // Fall through to the vendor panel.
             }
         }
-        return true;
+        SourcePanel.open(this, sourcePanelService, sourcePanelAction, sourcePanelExtra);
     }
 
     /** Unbound by Android: the user turned the helper off, so Home doesn't put it back (ServiceRepair). */

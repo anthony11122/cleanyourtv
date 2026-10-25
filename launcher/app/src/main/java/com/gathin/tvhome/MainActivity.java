@@ -2515,24 +2515,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** The TV's own source-selection panel, for TVs that have no TvInputManager (TCL Android TV 9): a
      *  service, or an activity on sets whose panel is a dialog (BYINTEK U4's QuickSourceActivity). */
     private void openSourcePanel() {
-        Intent i = new Intent(sourcePanelAction);
-        ComponentName c = ComponentName.unflattenFromString(sourcePanelService);
-        if (c != null) i.setComponent(c);
-        int eq = sourcePanelExtra.indexOf('=');
-        if (eq > 0) {
-            try {
-                i.putExtra(sourcePanelExtra.substring(0, eq).trim(),
-                        Integer.parseInt(sourcePanelExtra.substring(eq + 1).trim()));
-            } catch (NumberFormatException ignored) {
-            }
-        }
-        try {
-            if (getPackageManager().resolveActivity(i, 0) != null) {
-                startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                return;
-            }
-            startService(i);
-        } catch (Exception e) {
+        if (!SourcePanel.open(this, sourcePanelService, sourcePanelAction, sourcePanelExtra)) {
             Toast.makeText(this, R.string.not_available, Toast.LENGTH_SHORT).show();
         }
     }

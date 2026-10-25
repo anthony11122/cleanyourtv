@@ -131,6 +131,20 @@
          Both keys can also be set from a theme's config.json ("settings_key_keycodes": [83]). -->
     <bool name="settings_key_panel">false</bool>
 
+    <!-- Remote buttons that bring Home to the front, by Linux scancode (HOME_KEY_SERVICE=1 build-and-install.sh).
+         For firmware whose Home key never reaches the launcher: the Hisense VIDAA remote sends scancode 102, and
+         its keylayout turns that into KEYCODE_F12 (142) instead of KEYCODE_HOME, so with the stock launcher
+         disabled the button has no target. The vendor property persist.his.key_home_component covers some
+         02.02.x builds only; these arrays work on every build that binds the service. A scancode entry wins over
+         a keycode. Find yours with `tools/tv.py 'getevent -lt'` while pressing the button (EV_KEY code, hex).
+         The service is opt-in, so an empty default costs nothing. Leave empty to omit. -->
+    <integer-array name="home_key_scancodes">
+    </integer-array>
+    <!-- The same by Android keycode, for buttons whose scancode is shared. A theme's config.json can set both:
+         "home_key_scancodes": [102], "home_key_keycodes": [142]. -->
+    <integer-array name="home_key_keycodes">
+    </integer-array>
+
     <!-- A force stop of the launcher (Settings, a cleaner app, am force-stop) takes HomeKeyService and InputKeyService
          off the enabled list. true: Home puts the helpers that were running back when it starts; one turned off in
          Settings stays off. Needs WRITE_SECURE_SETTINGS, which build-and-install grants with RESTORE_KEY_SERVICES=1

@@ -64,6 +64,7 @@ export TV_HOST=192.168.1.50        # 换成你家电视的 IP
 | 步骤 | 干什么 | 命令 |
 |---|---|---|
 | **1. 备份** | 把包列表、禁用列表、`getprop`、各项 settings 全部存下来，出问题照着重放 | `tools/venv/bin/python -I tools/tv.py --probe`<br>`tools/venv/bin/python -I tools/tv.py 'pm list packages -f' > backup/packages.txt`<br>`tools/venv/bin/python -I tools/tv.py 'settings list global' > backup/settings-global.txt` |
+| **1.5 体检** | 一次性核对机型、Home、必须保留的包、OTA 和清单漂移，不改电视 | `tools/venv/bin/python -I tools/hisense.py`<br>`tools/venv/bin/python -I tools/hisense.py examples/hisense-vidaa-mt9653-cn/debloat.txt` |
 | **2. 清理** | 按机型清单批量禁用，脚本会先写还原记录再动手 | `tools/disable.sh examples/hisense-vidaa-mt9653-cn/debloat.txt` |
 | **3. 装桌面** | 编译、安装、抢 Home，失败会自动回滚 | `STOCK_LAUNCHER=com.jamdeo.tv.vod HOME_KEY_SERVICE=1 launcher/build-and-install.sh` |
 
@@ -156,18 +157,33 @@ tools/venv/bin/python -I tools/tv.py 'settings get global com.hisense.service.ad
 
 **Home 键**：物理按键上报的是 Linux scancode `102`，厂商的 keylayout 把它映射成 `KEYCODE_F12`（142），不是 `KEYCODE_HOME`（3）。原来由厂商的 SysUIMerge 接住这个键去切「上一个应用」——原桌面在的时候，切回去的就是桌面，所以看起来 Home 是好用的；原桌面一禁，这个键就变成了没有目标。
 
-两个办法：
+三个办法：
 
 ```bash
-# 办法一：告诉 VIDAA 的框架 Home 键该交给谁（推荐，重启后生效）
+# 办法一：告诉 VIDAA 的框架 Home 键该交给谁（部分 02.02.x 固件认，重启后生效）
 tools/venv/bin/python -I tools/tv.py 'setprop persist.his.key_home_component com.gathin.tvhome/.MainActivity'
 tools/venv/bin/python -I tools/tv.py 'getprop persist.his.key_home_component'
 
-# 办法二：打开桌面的按键辅助服务，接管按键事件
+# 办法二：打开桌面的按键辅助服务，并让服务接管 scancode 102 / KEYCODE_F12（所有固件都能用）
 HOME_KEY_SERVICE=1 STOCK_LAUNCHER=com.jamdeo.tv.vod launcher/build-and-install.sh
 ```
 
-办法一改的是厂商属性，`persist.` 前缀会写进 `/data/property`，重启不丢；想还原就 `setprop persist.his.key_home_component com.jamdeo.tv.vod/com.jamdeo.tv.vod.MainActivity`（或者干脆清空，让固件用默认值）。部分 02.02.x 之后的固件不认这个属性，那就只能靠办法二，或者把原桌面留着当 Home 键的接收器。
+办法二还要告诉服务「这个键是 Home」。装完桌面后，把下面几行并进你正在用的主题 `config.json`（没有主题就新建一个只有这些键的文件），再推一次：
+
+```json
+{
+  "home_key_scancodes": [102],
+  "home_key_keycodes": [142]
+}
+```
+
+```bash
+TV_HOST=192.168.1.50 tools/theme.sh <你的主题目录>
+```
+
+`home_key_scancodes` 按 Linux scancode 匹配，`home_key_keycodes` 按 Android keycode 匹配；scancode 更具体，先匹配。服务只在这两个列表命中时消费按键，其他键照常传给前台应用。这两个键也可以写进 `launcher/app/src/main/res/values/config.xml`，编进 APK 里，适合给自己的一台机器做固定配置。
+
+办法一改的是厂商属性，`persist.` 前缀会写进 `/data/property`，重启不丢；想还原就 `setprop persist.his.key_home_component com.jamdeo.tv.vod/com.jamdeo.tv.vod.MainActivity`（或者干脆清空，让固件用默认值）。部分 02.02.x 之后的固件不认这个属性，那就用办法二。
 
 **输入源键**：上报 `KEYCODE_TV_INPUT`（178）。这台机器 `dumpsys tv_input` 是空的，没有 TvInputManager 输入，所以桌面走的是厂商自己的输入源面板：
 
@@ -183,6 +199,14 @@ HOME_KEY_SERVICE=1 STOCK_LAUNCHER=com.jamdeo.tv.vod launcher/build-and-install.s
   "source_panel_action": "com.hisense.tv.start_inputs"
 }
 ```
+
+桌面里的输入源按钮走这份配置。要在**任何应用里**按遥控器的输入源键都能弹出面板，再打开按键辅助服务：
+
+```bash
+INPUT_KEY_SERVICE=1 STOCK_LAUNCHER=com.jamdeo.tv.vod launcher/build-and-install.sh
+```
+
+`InputKeyService` 先找系统的 `VIEW_INPUTS`；这台机器没有，于是回落到上面配置的厂商面板。以前它只发 `VIEW_INPUTS`，在海信上按了没反应。
 
 ## 恢复
 

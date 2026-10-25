@@ -38,6 +38,9 @@ public class HomeKeyService extends AccessibilityService {
     /** Remote buttons that should open Settings (config.xml, settings_key_scancodes and settings_key_keycodes). */
     private int[] settingsScancodes = new int[0];
     private int[] settingsKeycodes = new int[0];
+    /** Remote buttons that should bring Home to the front (config.xml home_key_scancodes / home_key_keycodes). */
+    private int[] homeScancodes = new int[0];
+    private int[] homeKeycodes = new int[0];
     private boolean settingsPanel;
     /** app_keys, the same maps InputKeyService reads, for setups that run only this service. */
     private Map<Integer, String> appKeys = Collections.emptyMap();
@@ -113,6 +116,8 @@ public class HomeKeyService extends AccessibilityService {
         repairRecord = config.restoreKeyServices;
         if (repairRecord) ServiceRepair.connected(this, getClass());
         settingsKeycodes = config.settingsKeycodes;
+        homeScancodes = config.homeScancodes;
+        homeKeycodes = config.homeKeycodes;
         settingsPanel = config.settingsKeyPanel;
         appKeys = RemoteKeys.parseAppKeys(config.appKeys);
         appScancodes = RemoteKeys.parseAppScancodes(config.appKeys);
@@ -128,6 +133,26 @@ public class HomeKeyService extends AccessibilityService {
         holdAppScancodes = RemoteKeys.parseHoldAppScancodes(config.appKeys);
     }
 
+    /** A button that should bring Home to the front (home_key_scancodes / home_key_keycodes). */
+    private boolean isHomeKey(KeyEvent event) {
+        for (int code : homeScancodes) if (event.getScanCode() == code) return true;
+        for (int code : homeKeycodes) if (event.getKeyCode() == code) return true;
+        return false;
+    }
+
+    /** Starts this launcher's Home screen. Shared by the mapped Home buttons and KEYCODE_ALL_APPS. */
+    private void openHome() {
+        Intent home = new Intent(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_HOME)
+                .setPackage(getPackageName())
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+        try {
+            startActivity(home);
+        } catch (ActivityNotFoundException | SecurityException ignored) {
+            // The launcher is installed and enabled (this service runs in it); nothing useful to show here.
+        }
+    }
+
     private boolean isSettingsKey(KeyEvent event) {
         if (event.getKeyCode() == KeyEvent.KEYCODE_SETTINGS) return true;
         for (int code : settingsScancodes) if (event.getScanCode() == code) return true;
@@ -140,6 +165,12 @@ public class HomeKeyService extends AccessibilityService {
         // A scancode entry is more specific than any keycode, so it goes first.
         if (RemoteKeys.handle(this, event, appScancodes.get(event.getScanCode()),
                 holdAppScancodes.get(event.getScanCode()))) return true;
+        // Hisense VIDAA sends Home as scancode 102 / KEYCODE_F12, which never reaches the framework as
+        // KEYCODE_HOME. Without this the button has no target once the stock launcher is disabled.
+        if (isHomeKey(event)) {
+            if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) openHome();
+            return true;
+        }
         // The stock launcher handled the remote's Settings button; with it disabled the button does nothing.
         if (isSettingsKey(event)) {
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
@@ -156,13 +187,7 @@ public class HomeKeyService extends AccessibilityService {
         if (RemoteKeys.handle(this, event, appKeys.get(event.getKeyCode()),
                 holdAppKeys.get(event.getKeyCode()))) return true;
         if (event.getKeyCode() != KeyEvent.KEYCODE_ALL_APPS) return false;
-        if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
-            Intent home = new Intent(Intent.ACTION_MAIN)
-                    .addCategory(Intent.CATEGORY_HOME)
-                    .setPackage(getPackageName())
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-            startActivity(home);
-        }
+        if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) openHome();
         return true;
     }
 

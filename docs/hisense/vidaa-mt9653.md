@@ -88,18 +88,29 @@ TV_HOST=192.168.1.50 tools/venv/bin/python -I tools/tv.py 'settings put secure s
 | 厂商 keylayout | 映射成 `KEYCODE_F12`（142），不是 `KEYCODE_HOME`（3） |
 | 原接收者 | 厂商 SysUIMerge，用来切「上一个应用」；原桌面在时表现为回桌面 |
 
-原桌面一禁，这个键就没有目标了。两个办法：
+原桌面一禁，这个键就没有目标了。三个办法：
 
 ```bash
 # 厂商属性：告诉 VIDAA 框架 Home 该交给谁，persist. 前缀重启不丢
 tools/venv/bin/python -I tools/tv.py 'setprop persist.his.key_home_component com.gathin.tvhome/.MainActivity'
 tools/venv/bin/python -I tools/tv.py 'getprop persist.his.key_home_component'
 
-# 或者打开桌面的按键辅助服务
+# 或者打开桌面的按键辅助服务，并让它接管 scancode 102 / KEYCODE_F12
 HOME_KEY_SERVICE=1 STOCK_LAUNCHER=com.jamdeo.tv.vod launcher/build-and-install.sh
 ```
 
-`persist.his.key_home_component` 在 02.02.70.01 上有效，部分更晚的 02.02.x 固件不认这个属性，那就只能靠按键辅助服务。
+```json
+{
+  "home_key_scancodes": [102],
+  "home_key_keycodes": [142]
+}
+```
+
+```bash
+TV_HOST=192.168.1.50 tools/theme.sh <主题目录>
+```
+
+`persist.his.key_home_component` 在 02.02.70.01 上有效，部分更晚的 02.02.x 固件不认这个属性。按键辅助服务这条路不依赖厂商属性：服务绑上之后自己消费 scancode 102 / keycode 142，调 `GLOBAL_ACTION_HOME` 同级的方式回桌面，任何固件都能用。两个键的列表只在这两个值命中时生效，其他按键照常传给前台应用。
 
 ## 输入源
 
@@ -110,7 +121,7 @@ HOME_KEY_SERVICE=1 STOCK_LAUNCHER=com.jamdeo.tv.vod launcher/build-and-install.s
 | 服务 | `com.hisense.tv.inputs/com.hisense.tv.InputsUIService` |
 | action | `com.hisense.tv.start_inputs` |
 | 依赖 | `com.hisense.tv.tiletransition` 的 `TileAnimationService` |
-| 遥控器按键 | `KEYCODE_TV_INPUT`（178） |
+| 遥控器按键 | `KEYCODE_TV_INPUT`（178）；`INPUT_KEY_SERVICE=1` 时 `InputKeyService` 从任何应用接住它，先找系统 `VIEW_INPUTS`，没有就打开下面配置的厂商面板 |
 
 主题 `config.json` 写法：
 

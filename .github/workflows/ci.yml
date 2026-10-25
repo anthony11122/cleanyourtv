@@ -3,10 +3,22 @@ name: CI
 on:
   push:
     branches: [main]
+    # Docs-only changes do not need a 3-minute Android build; a push that touches the launcher,
+    # the theme overlay format or this workflow does.
+    paths:
+      - 'launcher/**'
+      - 'themes/**'
+      - 'tools/**'
+      - '.github/workflows/ci.yml'
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   launcher:
@@ -22,6 +34,17 @@ jobs:
         with:
           packages: platforms;android-34 build-tools;34.0.0
       - uses: gradle/actions/setup-gradle@v4
+      - name: Decode signing keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "No signing secret set; this build uses the debug key."
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.p12"
+          echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
+          echo "SIGNING_STORE_PASSWORD=${{ secrets.SIGNING_STORE_PASSWORD }}" >> "$GITHUB_ENV"
       - name: Unit tests, lint and release build
         working-directory: launcher
         run: |
@@ -32,3 +55,12 @@ jobs:
           size=$(stat -c %s launcher/app/build/outputs/apk/release/app-release.apk)
           echo "release APK: $((size / 1024)) KB"
           test "$size" -lt 491520 || { echo "APK is over 480 KB; the launcher targets 1 GB TVs, keep it small"; exit 1; }
+      # Every push to main leaves an installable APK behind, signed with the same key as the
+      # releases, so it installs over the copy already on the TV (see docs/hisense/故障排查.md #2).
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: launcher/app/build/outputs/apk/release/app-release.apk
+          retention-days: 7
+          if-no-files-found: error

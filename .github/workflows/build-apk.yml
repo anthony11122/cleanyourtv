@@ -8,9 +8,16 @@ on:
         required: false
         default: main
         type: string
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-apk:

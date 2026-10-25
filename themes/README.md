@@ -82,6 +82,8 @@ powershell -ExecutionPolicy Bypass -File tools\theme.ps1 -TvHost 192.168.1.50 th
 | `greeting` | string | 节日期间替换问候语 |
 | `accent_color` | `#RRGGBB` | 节日期间焦点光晕的颜色 |
 | `settings_key_keycodes` | 键码列表 | 打开设置的遥控器按键（`HomeKeyService` 用） |
+| `home_key_scancodes` | scancode 列表 | 回桌面的遥控器按键，按 Linux scancode 匹配（`HomeKeyService` 用）。海信 VIDAA 的 Home 键是 `102` |
+| `home_key_keycodes` | 键码列表 | 回桌面的遥控器按键，按 Android keycode 匹配。海信 VIDAA 是 `142`（`KEYCODE_F12`） |
 | `settings_key_panel` | bool | 那些键改成打开一个小的快捷设置面板（电视设置、显示、网络、应用、桌面设置） |
 | `restore_key_services` | bool | 桌面被强停之后，下次进桌面把按键辅助服务重新写回启用列表；安装时要带 `RESTORE_KEY_SERVICES=1` |
 | `input_key_keycodes` | 键码列表 | 更多打开输入源切换的按键（`KEYCODE_TV` 和 `KEYCODE_TV_INPUT` 本来就管用） |
